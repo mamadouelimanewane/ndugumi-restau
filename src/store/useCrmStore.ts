@@ -18,6 +18,13 @@ import {
   type StatutHistoryEntry,
   type Product,
   type ProductMap,
+  type MessageTemplate,
+  type TemplateMap,
+  type Campaign,
+  type CampaignMap,
+  type CampaignSend,
+  type CampaignSendMap,
+  type Canal,
   defaultDeal,
   defaultNdugumi,
 } from '../types'
@@ -38,6 +45,42 @@ const DEFAULT_PRODUCTS: Product[] = [
 function makeDefaultProducts(): ProductMap {
   const m: ProductMap = {}
   for (const p of DEFAULT_PRODUCTS) m[p.id] = p
+  return m
+}
+
+const DEFAULT_TEMPLATES: MessageTemplate[] = [
+  {
+    id: 'wa-premier-contact',
+    nom: 'Premier contact',
+    canal: 'whatsapp',
+    sujet: '',
+    corps:
+      "Bonjour, je suis {agent} de NDUGUMi. Nous aidons les restaurants de {quartier} à faire leur marché plus simplement, via notre application mobile, avec livraison. Auriez-vous 5 minutes pour en discuter ?",
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'wa-relance',
+    nom: 'Relance sans réponse',
+    canal: 'whatsapp',
+    sujet: '',
+    corps:
+      "Bonjour, je me permets de revenir vers vous au sujet de NDUGUMi pour {etablissement}. Souhaitez-vous qu'on fixe un moment pour en discuter cette semaine ?",
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'email-presentation',
+    nom: 'Présentation NDUGUMi',
+    canal: 'email',
+    sujet: 'NDUGUMi — simplifiez le marché de {etablissement}',
+    corps:
+      "Bonjour,\n\nJe vous contacte au sujet de NDUGUMi, l'application qui permet aux restaurants de {quartier} de commander leurs produits de marché (riz, huile, légumes, viandes...) directement depuis leur téléphone, avec livraison.\n\nJe reste à votre disposition pour vous présenter le service.\n\nCordialement,\n{agent}",
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+]
+
+function makeDefaultTemplates(): TemplateMap {
+  const m: TemplateMap = {}
+  for (const t of DEFAULT_TEMPLATES) m[t.id] = t
   return m
 }
 
@@ -76,6 +119,9 @@ export interface CrmBackup {
   merchantPortalUrl: string
   quotas: Record<string, number>
   products: ProductMap
+  templates: TemplateMap
+  campaigns: CampaignMap
+  campaignSends: CampaignSendMap
   exportedAt: string
 }
 
@@ -87,6 +133,9 @@ interface CrmStore {
   merchantPortalUrl: string
   quotas: Record<string, number>
   products: ProductMap
+  templates: TemplateMap
+  campaigns: CampaignMap
+  campaignSends: CampaignSendMap
 
   ensureAll: () => void
 
@@ -134,6 +183,17 @@ interface CrmStore {
   updateProduct: (id: string, fields: Partial<Omit<Product, 'id'>>) => void
   removeProduct: (id: string) => void
 
+  // Templates de communication (WhatsApp / Email)
+  addTemplate: (data: Omit<MessageTemplate, 'id' | 'createdAt'>) => void
+  updateTemplate: (id: string, fields: Partial<Omit<MessageTemplate, 'id'>>) => void
+  removeTemplate: (id: string) => void
+
+  // Campagnes marketing
+  addCampaign: (data: Omit<Campaign, 'id' | 'createdAt'>) => string
+  updateCampaign: (id: string, fields: Partial<Omit<Campaign, 'id'>>) => void
+  removeCampaign: (id: string) => void
+  logCampaignSend: (campaignId: string, restaurantId: number, canal: Canal) => void
+
   // Sauvegarde / restauration
   getBackup: () => CrmBackup
   restoreBackup: (data: CrmBackup) => void
@@ -151,6 +211,9 @@ export const useCrmStore = create<CrmStore>()(
       merchantPortalUrl: DEFAULT_MERCHANT_PORTAL_URL,
       quotas: {},
       products: makeDefaultProducts(),
+      templates: makeDefaultTemplates(),
+      campaigns: {},
+      campaignSends: {},
 
       ensureAll: () => {
         const state = get()
@@ -429,6 +492,60 @@ export const useCrmStore = create<CrmStore>()(
         })
       },
 
+      addTemplate: (data) => {
+        const id = crypto.randomUUID()
+        const template: MessageTemplate = { id, createdAt: todayISO(), ...data }
+        set((s) => ({ templates: { ...s.templates, [id]: template } }))
+      },
+
+      updateTemplate: (id, fields) => {
+        set((s) => {
+          const existing = s.templates[id]
+          if (!existing) return s
+          return { templates: { ...s.templates, [id]: { ...existing, ...fields } } }
+        })
+      },
+
+      removeTemplate: (id) => {
+        set((s) => {
+          const templates = { ...s.templates }
+          delete templates[id]
+          return { templates }
+        })
+      },
+
+      addCampaign: (data) => {
+        const id = crypto.randomUUID()
+        const campaign: Campaign = { id, createdAt: todayISO(), ...data }
+        set((s) => ({ campaigns: { ...s.campaigns, [id]: campaign } }))
+        return id
+      },
+
+      updateCampaign: (id, fields) => {
+        set((s) => {
+          const existing = s.campaigns[id]
+          if (!existing) return s
+          return { campaigns: { ...s.campaigns, [id]: { ...existing, ...fields } } }
+        })
+      },
+
+      removeCampaign: (id) => {
+        set((s) => {
+          const campaigns = { ...s.campaigns }
+          delete campaigns[id]
+          const campaignSends = Object.fromEntries(
+            Object.entries(s.campaignSends).filter(([, cs]) => cs.campaignId !== id)
+          )
+          return { campaigns, campaignSends }
+        })
+      },
+
+      logCampaignSend: (campaignId, restaurantId, canal) => {
+        const id = crypto.randomUUID()
+        const send: CampaignSend = { id, campaignId, restaurantId, canal, date: todayISO() }
+        set((s) => ({ campaignSends: { ...s.campaignSends, [id]: send } }))
+      },
+
       getBackup: () => {
         const s = get()
         return {
@@ -439,6 +556,9 @@ export const useCrmStore = create<CrmStore>()(
           merchantPortalUrl: s.merchantPortalUrl,
           quotas: s.quotas,
           products: s.products,
+          templates: s.templates,
+          campaigns: s.campaigns,
+          campaignSends: s.campaignSends,
           exportedAt: todayISO(),
         }
       },
@@ -452,6 +572,9 @@ export const useCrmStore = create<CrmStore>()(
           merchantPortalUrl: data.merchantPortalUrl ?? DEFAULT_MERCHANT_PORTAL_URL,
           quotas: data.quotas ?? {},
           products: data.products ?? makeDefaultProducts(),
+          templates: data.templates ?? makeDefaultTemplates(),
+          campaigns: data.campaigns ?? {},
+          campaignSends: data.campaignSends ?? {},
         })
       },
 
@@ -464,11 +587,14 @@ export const useCrmStore = create<CrmStore>()(
           merchantPortalUrl: DEFAULT_MERCHANT_PORTAL_URL,
           quotas: {},
           products: makeDefaultProducts(),
+          templates: makeDefaultTemplates(),
+          campaigns: {},
+          campaignSends: {},
         }),
     }),
     {
       name: 'restau-crm-storage',
-      version: 5,
+      version: 6,
       migrate: (persisted: any) => {
         if (!persisted) return persisted
         const prospects: ProspectMap = persisted.prospects ?? {}
@@ -494,6 +620,9 @@ export const useCrmStore = create<CrmStore>()(
           merchantPortalUrl: persisted.merchantPortalUrl ?? DEFAULT_MERCHANT_PORTAL_URL,
           quotas: persisted.quotas ?? {},
           products: persisted.products ?? makeDefaultProducts(),
+          templates: persisted.templates ?? makeDefaultTemplates(),
+          campaigns: persisted.campaigns ?? {},
+          campaignSends: persisted.campaignSends ?? {},
         }
       },
     }

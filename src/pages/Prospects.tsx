@@ -37,6 +37,8 @@ export default function Prospects() {
   useEffect(() => {
     const q = searchParams.get('quartier')
     if (q) setQuartierFilter(q)
+    const s = searchParams.get('statut')
+    if (s) setStatutFilter(s as Statut)
   }, [searchParams])
 
   const [newNom, setNewNom] = useState('')

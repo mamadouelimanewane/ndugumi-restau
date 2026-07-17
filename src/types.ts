@@ -190,3 +190,55 @@ export interface Product {
 }
 
 export type ProductMap = Record<string, Product>
+
+export type Canal = 'whatsapp' | 'email'
+
+export const CANAL_LABELS: Record<Canal, string> = {
+  whatsapp: 'WhatsApp',
+  email: 'Email',
+}
+
+export interface MessageTemplate {
+  id: string
+  nom: string
+  canal: Canal
+  sujet: string // utilisé seulement pour email
+  corps: string // placeholders : {etablissement} {quartier} {telephone} {agent}
+  createdAt: string
+}
+
+export type TemplateMap = Record<string, MessageTemplate>
+
+export interface CampaignFilter {
+  zone: Zone | ''
+  quartier: string
+  statut: Statut | ''
+  ndugumi: '' | 'oui' | 'non'
+  tag: string
+}
+
+export function defaultCampaignFilter(): CampaignFilter {
+  return { zone: '', quartier: '', statut: '', ndugumi: '', tag: '' }
+}
+
+export interface Campaign {
+  id: string
+  nom: string
+  objectif: string
+  canal: Canal
+  templateId: string | null
+  filtre: CampaignFilter
+  createdAt: string
+}
+
+export type CampaignMap = Record<string, Campaign>
+
+export interface CampaignSend {
+  id: string
+  campaignId: string
+  restaurantId: number
+  canal: Canal
+  date: string
+}
+
+export type CampaignSendMap = Record<string, CampaignSend>
