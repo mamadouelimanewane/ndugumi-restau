@@ -31,6 +31,7 @@ export default function ProspectDetail() {
   const tasks = useCrmStore((s) => s.tasks)
   const agents = useCrmStore((s) => s.agents)
   const products = useCrmStore((s) => s.products)
+  const currentAgent = useCrmStore((s) => s.currentAgent)
   const merchantPortalUrl = useCrmStore((s) => s.merchantPortalUrl)
 
   const setStatut = useCrmStore((s) => s.setStatut)
@@ -67,7 +68,7 @@ export default function ProspectDetail() {
   const [editZone, setEditZone] = useState<Zone>(restaurant?.zone ?? 'Dakar intra-muros')
 
   const [noteType, setNoteType] = useState<InteractionType>('appel')
-  const [noteAgent, setNoteAgent] = useState(crm?.agent || agents[0])
+  const [noteAgent, setNoteAgent] = useState(currentAgent || crm?.agent || agents[0])
   const [noteText, setNoteText] = useState('')
 
   const [tagInput, setTagInput] = useState('')
@@ -82,11 +83,11 @@ export default function ProspectDetail() {
   const [taskDesc, setTaskDesc] = useState('')
   const [taskDate, setTaskDate] = useState('')
   const [taskPriorite, setTaskPriorite] = useState<TaskPriorite>('normale')
-  const [taskAgent, setTaskAgent] = useState(crm?.agent || agents[0])
+  const [taskAgent, setTaskAgent] = useState(currentAgent || crm?.agent || agents[0])
 
   const [selectedQty, setSelectedQty] = useState<Record<string, number>>({})
   const [proposalMessage, setProposalMessage] = useState('')
-  const [proposalAgent, setProposalAgent] = useState(crm?.agent || agents[0])
+  const [proposalAgent, setProposalAgent] = useState(currentAgent || crm?.agent || agents[0])
 
   if (!restaurant || !crm) {
     return (

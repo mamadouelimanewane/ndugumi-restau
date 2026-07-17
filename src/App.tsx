@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
+import WhoAreYou from './components/WhoAreYou'
 import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
 import Prospects from './pages/Prospects'
@@ -19,10 +20,15 @@ import { useCrmStore } from './store/useCrmStore'
 
 export default function App() {
   const ensureAll = useCrmStore((s) => s.ensureAll)
+  const currentAgent = useCrmStore((s) => s.currentAgent)
 
   useEffect(() => {
     ensureAll()
   }, [ensureAll])
+
+  if (currentAgent === null) {
+    return <WhoAreYou />
+  }
 
   return (
     <div className="app-shell">

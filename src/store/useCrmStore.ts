@@ -25,8 +25,13 @@ import {
   type CampaignSend,
   type CampaignSendMap,
   type Canal,
+  type UserProfile,
+  type UserProfileMap,
+  type Order,
+  type OrderMap,
   defaultDeal,
   defaultNdugumi,
+  defaultUserProfile,
 } from '../types'
 
 const DEFAULT_PRODUCTS: Product[] = [
@@ -111,6 +116,16 @@ function makeDefaultState(): ProspectState {
 
 export const DEFAULT_AGENTS = ['Non assigné', 'Mamadou', 'Astou', 'Cheikh', 'Fatou', 'Ibrahima']
 
+function makeDefaultUserProfiles(): UserProfileMap {
+  const m: UserProfileMap = {}
+  for (const a of DEFAULT_AGENTS) {
+    if (a === 'Non assigné') continue
+    m[a] = defaultUserProfile(a)
+  }
+  m['Mamadou'] = { ...m['Mamadou'], role: 'admin' }
+  return m
+}
+
 export interface CrmBackup {
   restaurants: RestaurantMap
   prospects: ProspectMap
@@ -122,6 +137,9 @@ export interface CrmBackup {
   templates: TemplateMap
   campaigns: CampaignMap
   campaignSends: CampaignSendMap
+  userProfiles: UserProfileMap
+  currentAgent: string | null
+  orders: OrderMap
   exportedAt: string
 }
 
@@ -136,6 +154,9 @@ interface CrmStore {
   templates: TemplateMap
   campaigns: CampaignMap
   campaignSends: CampaignSendMap
+  userProfiles: UserProfileMap
+  currentAgent: string | null
+  orders: OrderMap
 
   ensureAll: () => void
 
@@ -173,10 +194,16 @@ interface CrmStore {
   toggleTask: (taskId: string) => void
   removeTask: (taskId: string) => void
 
-  // Agents
+  // Agents / utilisateurs
   addAgentName: (name: string) => void
   removeAgentName: (name: string) => void
   setQuota: (agent: string, target: number | null) => void
+  setUserProfile: (nom: string, fields: Partial<Omit<UserProfile, 'nom'>>) => void
+  setCurrentAgent: (nom: string | null) => void
+
+  // Commandes NDUGUMi (import de reporting)
+  importOrders: (orders: Omit<Order, 'id' | 'importedAt'>[]) => { imported: number; skipped: number }
+  setOrderRestaurant: (id: string, restaurantId: number | null) => void
 
   // Catalogue produits
   addProduct: (data: Omit<Product, 'id'>) => void
@@ -214,6 +241,9 @@ export const useCrmStore = create<CrmStore>()(
       templates: makeDefaultTemplates(),
       campaigns: {},
       campaignSends: {},
+      userProfiles: makeDefaultUserProfiles(),
+      currentAgent: null,
+      orders: {},
 
       ensureAll: () => {
         const state = get()
@@ -454,11 +484,26 @@ export const useCrmStore = create<CrmStore>()(
       addAgentName: (name) => {
         const trimmed = name.trim()
         if (!trimmed) return
-        set((s) => (s.agents.includes(trimmed) ? s : { agents: [...s.agents, trimmed] }))
+        set((s) =>
+          s.agents.includes(trimmed)
+            ? s
+            : {
+                agents: [...s.agents, trimmed],
+                userProfiles: { ...s.userProfiles, [trimmed]: defaultUserProfile(trimmed) },
+              }
+        )
       },
 
       removeAgentName: (name) => {
-        set((s) => ({ agents: s.agents.filter((a) => a !== name) }))
+        set((s) => {
+          const userProfiles = { ...s.userProfiles }
+          delete userProfiles[name]
+          return {
+            agents: s.agents.filter((a) => a !== name),
+            userProfiles,
+            currentAgent: s.currentAgent === name ? null : s.currentAgent,
+          }
+        })
       },
 
       setQuota: (agent, target) => {
@@ -467,6 +512,43 @@ export const useCrmStore = create<CrmStore>()(
           if (target === null || Number.isNaN(target)) delete quotas[agent]
           else quotas[agent] = target
           return { quotas }
+        })
+      },
+
+      setUserProfile: (nom, fields) => {
+        set((s) => {
+          const existing = s.userProfiles[nom] ?? defaultUserProfile(nom)
+          return { userProfiles: { ...s.userProfiles, [nom]: { ...existing, ...fields } } }
+        })
+      },
+
+      setCurrentAgent: (nom) => set({ currentAgent: nom }),
+
+      importOrders: (newOrders) => {
+        const state = get()
+        const existingOrderIds = new Set(Object.values(state.orders).map((o) => o.orderId))
+        let imported = 0
+        let skipped = 0
+        const additions: OrderMap = {}
+        for (const o of newOrders) {
+          if (existingOrderIds.has(o.orderId)) {
+            skipped++
+            continue
+          }
+          const id = crypto.randomUUID()
+          additions[id] = { id, importedAt: todayISO(), ...o }
+          existingOrderIds.add(o.orderId)
+          imported++
+        }
+        if (imported > 0) set((s) => ({ orders: { ...s.orders, ...additions } }))
+        return { imported, skipped }
+      },
+
+      setOrderRestaurant: (id, restaurantId) => {
+        set((s) => {
+          const existing = s.orders[id]
+          if (!existing) return s
+          return { orders: { ...s.orders, [id]: { ...existing, restaurantId } } }
         })
       },
 
@@ -559,6 +641,9 @@ export const useCrmStore = create<CrmStore>()(
           templates: s.templates,
           campaigns: s.campaigns,
           campaignSends: s.campaignSends,
+          userProfiles: s.userProfiles,
+          currentAgent: s.currentAgent,
+          orders: s.orders,
           exportedAt: todayISO(),
         }
       },
@@ -575,6 +660,9 @@ export const useCrmStore = create<CrmStore>()(
           templates: data.templates ?? makeDefaultTemplates(),
           campaigns: data.campaigns ?? {},
           campaignSends: data.campaignSends ?? {},
+          userProfiles: data.userProfiles ?? makeDefaultUserProfiles(),
+          currentAgent: data.currentAgent ?? null,
+          orders: data.orders ?? {},
         })
       },
 
@@ -590,11 +678,14 @@ export const useCrmStore = create<CrmStore>()(
           templates: makeDefaultTemplates(),
           campaigns: {},
           campaignSends: {},
+          userProfiles: makeDefaultUserProfiles(),
+          currentAgent: null,
+          orders: {},
         }),
     }),
     {
       name: 'restau-crm-storage',
-      version: 6,
+      version: 7,
       migrate: (persisted: any) => {
         if (!persisted) return persisted
         const prospects: ProspectMap = persisted.prospects ?? {}
@@ -623,6 +714,9 @@ export const useCrmStore = create<CrmStore>()(
           templates: persisted.templates ?? makeDefaultTemplates(),
           campaigns: persisted.campaigns ?? {},
           campaignSends: persisted.campaignSends ?? {},
+          userProfiles: persisted.userProfiles ?? makeDefaultUserProfiles(),
+          currentAgent: persisted.currentAgent ?? null,
+          orders: persisted.orders ?? {},
         }
       },
     }

@@ -3,7 +3,7 @@ import { useCrmStore, type CrmBackup } from '../store/useCrmStore'
 import { joinProspects, isLate } from '../utils/joined'
 import { exportAgentPdf } from '../utils/pdf'
 import { exportAgentXlsx } from '../utils/excel'
-import { CLIENT_STATUTS } from '../types'
+import { CLIENT_STATUTS, USER_ROLE_LABELS, type UserRole } from '../types'
 
 export default function Agents() {
   const restaurants = useCrmStore((s) => s.restaurants)
@@ -11,10 +11,14 @@ export default function Agents() {
   const tasks = useCrmStore((s) => s.tasks)
   const agents = useCrmStore((s) => s.agents)
   const quotas = useCrmStore((s) => s.quotas)
+  const userProfiles = useCrmStore((s) => s.userProfiles)
+  const currentAgent = useCrmStore((s) => s.currentAgent)
   const addAgentName = useCrmStore((s) => s.addAgentName)
   const removeAgentName = useCrmStore((s) => s.removeAgentName)
   const setAgent = useCrmStore((s) => s.setAgent)
   const setQuota = useCrmStore((s) => s.setQuota)
+  const setUserProfile = useCrmStore((s) => s.setUserProfile)
+  const setCurrentAgent = useCrmStore((s) => s.setCurrentAgent)
   const merchantPortalUrl = useCrmStore((s) => s.merchantPortalUrl)
   const setMerchantPortalUrl = useCrmStore((s) => s.setMerchantPortalUrl)
   const getBackup = useCrmStore((s) => s.getBackup)
@@ -213,6 +217,82 @@ export default function Agents() {
             Ajouter
           </button>
         </div>
+      </div>
+
+      <div className="panel" style={{ background: '#faf7f2' }}>
+        <h3>Utilisateurs</h3>
+        <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 0 }}>
+          ⚠️ Ceci n'est pas un système d'authentification sécurisé (aucun mot de passe, pas de serveur) — la
+          sélection « Qui êtes-vous » sert uniquement à préremplir automatiquement l'agent sur les notes, tâches
+          et messages. N'importe qui ayant le lien peut se faire passer pour un autre utilisateur.
+        </p>
+        <div style={{ fontSize: 12.5, marginBottom: 10 }}>
+          Utilisateur actuel : <strong>{currentAgent ?? 'aucun'}</strong>{' '}
+          <button className="btn secondary small" onClick={() => setCurrentAgent(null)}>
+            Changer
+          </button>
+        </div>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Nom</th>
+              <th>Email</th>
+              <th>Téléphone</th>
+              <th>Rôle</th>
+              <th>Actif</th>
+            </tr>
+          </thead>
+          <tbody>
+            {agents
+              .filter((a) => a !== 'Non assigné')
+              .map((a) => {
+                const p = userProfiles[a]
+                return (
+                  <tr key={a}>
+                    <td>{a}</td>
+                    <td>
+                      <input
+                        type="text"
+                        defaultValue={p?.email ?? ''}
+                        onBlur={(e) => setUserProfile(a, { email: e.target.value })}
+                        style={{ fontSize: 12, width: 160 }}
+                        placeholder="email@exemple.com"
+                      />
+                    </td>
+                    <td>
+                      <input
+                        type="text"
+                        defaultValue={p?.telephone ?? ''}
+                        onBlur={(e) => setUserProfile(a, { telephone: e.target.value })}
+                        style={{ fontSize: 12, width: 130 }}
+                        placeholder="77 000 00 00"
+                      />
+                    </td>
+                    <td>
+                      <select
+                        value={p?.role ?? 'commercial'}
+                        onChange={(e) => setUserProfile(a, { role: e.target.value as UserRole })}
+                        style={{ fontSize: 12 }}
+                      >
+                        {(Object.keys(USER_ROLE_LABELS) as UserRole[]).map((r) => (
+                          <option key={r} value={r}>
+                            {USER_ROLE_LABELS[r]}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={p?.actif ?? true}
+                        onChange={(e) => setUserProfile(a, { actif: e.target.checked })}
+                      />
+                    </td>
+                  </tr>
+                )
+              })}
+          </tbody>
+        </table>
       </div>
 
       <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>

@@ -22,6 +22,7 @@ export default function Communication() {
   const restaurants = useCrmStore((s) => s.restaurants)
   const prospects = useCrmStore((s) => s.prospects)
   const agents = useCrmStore((s) => s.agents)
+  const currentAgent = useCrmStore((s) => s.currentAgent)
   const templates = useCrmStore((s) => s.templates)
   const campaigns = useCrmStore((s) => s.campaigns)
   const addTemplate = useCrmStore((s) => s.addTemplate)
@@ -46,7 +47,7 @@ export default function Communication() {
   const [tagFilter, setTagFilter] = useState('')
   const [canalFilter, setCanalFilter] = useState<Canal>('whatsapp')
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
-  const [sendingAgent, setSendingAgent] = useState(agents[0])
+  const [sendingAgent, setSendingAgent] = useState(currentAgent || agents[0])
 
   useEffect(() => {
     if (!campaign) return

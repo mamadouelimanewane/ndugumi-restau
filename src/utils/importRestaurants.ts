@@ -35,7 +35,10 @@ function findColumn(headers: string[], candidates: string[]): number {
  * fait planter le décodage des accents (SheetJS ne devine pas l'encodage d'un CSV binaire).
  */
 export function parseRestaurantsFile(data: ArrayBuffer | string): ImportResult {
-  const wb = typeof data === 'string' ? XLSX.read(data, { type: 'string' }) : XLSX.read(data, { type: 'array' })
+  const wb =
+    typeof data === 'string'
+      ? XLSX.read(data, { type: 'string', raw: true })
+      : XLSX.read(data, { type: 'array', raw: true })
   const sheet = wb.Sheets[wb.SheetNames[0]]
   const aoa = XLSX.utils.sheet_to_json<string[]>(sheet, { header: 1, blankrows: false })
 

@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { useCrmStore } from '../store/useCrmStore'
 
 const links = [
   { to: '/', label: 'Accueil', icon: '🏠', end: true },
@@ -17,6 +18,9 @@ const links = [
 ]
 
 export default function Sidebar() {
+  const currentAgent = useCrmStore((s) => s.currentAgent)
+  const setCurrentAgent = useCrmStore((s) => s.setCurrentAgent)
+
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
@@ -37,6 +41,14 @@ export default function Sidebar() {
         ))}
       </nav>
       <div className="sidebar-footer">
+        Connecté : <strong>{currentAgent ?? '—'}</strong>{' '}
+        <button
+          onClick={() => setCurrentAgent(null)}
+          style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: 0, fontSize: 11 }}
+        >
+          Changer
+        </button>
+        <br />
         Outil interne de relation client
         <br />
         pour la prospection des restaurants

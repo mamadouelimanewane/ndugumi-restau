@@ -242,3 +242,49 @@ export interface CampaignSend {
 }
 
 export type CampaignSendMap = Record<string, CampaignSend>
+
+export type UserRole = 'admin' | 'commercial'
+
+export const USER_ROLE_LABELS: Record<UserRole, string> = {
+  admin: 'Admin',
+  commercial: 'Commercial',
+}
+
+export interface UserProfile {
+  nom: string // clé — doit correspondre à une entrée de la liste `agents`
+  email: string
+  telephone: string
+  role: UserRole
+  actif: boolean
+}
+
+export function defaultUserProfile(nom: string): UserProfile {
+  return { nom, email: '', telephone: '', role: 'commercial', actif: true }
+}
+
+export type UserProfileMap = Record<string, UserProfile>
+
+export interface Order {
+  id: string
+  orderId: string
+  cartAmount: number
+  deliveryCharges: number
+  tax: number
+  tip: number
+  discount: number
+  grandTotal: number
+  produits: string[]
+  marcheNom: string
+  marcheTelephone: string
+  marcheEmail: string
+  clientNom: string
+  clientTelephone: string
+  clientEmail: string
+  livraisonPrevue: string
+  statutCommande: string
+  creeLe: string // ISO ou "yyyy-mm-dd HH:mm:ss" tel qu'exporté par NDUGUMi
+  restaurantId: number | null // rapprochement avec une fiche du CRM (null = non rapproché)
+  importedAt: string
+}
+
+export type OrderMap = Record<string, Order>

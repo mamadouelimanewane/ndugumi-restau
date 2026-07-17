@@ -16,6 +16,7 @@ export default function Tasks() {
   const restaurants = useCrmStore((s) => s.restaurants)
   const tasks = useCrmStore((s) => s.tasks)
   const agents = useCrmStore((s) => s.agents)
+  const currentAgent = useCrmStore((s) => s.currentAgent)
   const addTask = useCrmStore((s) => s.addTask)
   const toggleTask = useCrmStore((s) => s.toggleTask)
   const removeTask = useCrmStore((s) => s.removeTask)
@@ -34,7 +35,7 @@ export default function Tasks() {
   const [description, setDescription] = useState('')
   const [dateEcheance, setDateEcheance] = useState('')
   const [priorite, setPriorite] = useState<TaskPriorite>('normale')
-  const [taskAgent, setTaskAgent] = useState(agents[0])
+  const [taskAgent, setTaskAgent] = useState(currentAgent || agents[0])
   const [showForm, setShowForm] = useState(false)
 
   const restaurantOptions = useMemo(() => {
