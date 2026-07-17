@@ -1,0 +1,1647 @@
+[
+  {
+    "id": 1,
+    "etablissement": "Chez Katia, ancienne route nationale, face station Petrosen, Diamniadio",
+    "telephone": "33 871 32 85",
+    "quartier": "Diamniadio / Bargny / Sébikotane",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 2,
+    "etablissement": "Cheztacko, Sébikotane",
+    "telephone": "33 846 27 04",
+    "quartier": "Diamniadio / Bargny / Sébikotane",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 3,
+    "etablissement": "Kohinoor Restaurant, Sébikotane",
+    "telephone": "Non communiqué",
+    "quartier": "Diamniadio / Bargny / Sébikotane",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 4,
+    "etablissement": "Le Pâtissier Bargny, Bargny-Gouddou",
+    "telephone": "Non communiqué",
+    "quartier": "Diamniadio / Bargny / Sébikotane",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 5,
+    "etablissement": "Résidence Le Bélier, Sébikotane",
+    "telephone": "Non communiqué",
+    "quartier": "Diamniadio / Bargny / Sébikotane",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 6,
+    "etablissement": "Tangor Café, Sébikotane",
+    "telephone": "Non communiqué",
+    "quartier": "Diamniadio / Bargny / Sébikotane",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 7,
+    "etablissement": "Villa Yenne Dakar Diamniadio, Bargny-Gouddou",
+    "telephone": "Non communiqué",
+    "quartier": "Diamniadio / Bargny / Sébikotane",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 8,
+    "etablissement": "Auberge Et Tourisme, 275 Guédiawaye",
+    "telephone": "33 855 94 25",
+    "quartier": "Guédiawaye",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 9,
+    "etablissement": "Auberge Lilas Dakar, Cité Nations Unies Camberène 2, Guédiawaye",
+    "telephone": "33 855 94 25",
+    "quartier": "Guédiawaye",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 10,
+    "etablissement": "FastFood Ndiambour, Nations Unies / HLM Paris, Guédiawaye",
+    "telephone": "Non communiqué",
+    "quartier": "Guédiawaye",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 11,
+    "etablissement": "La Baguette d'Or, Rue GS-251, Golf Sud, Guédiawaye",
+    "telephone": "Non communiqué",
+    "quartier": "Guédiawaye",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 12,
+    "etablissement": "Le Ravin / Complexe Ravin, Guédiawaye",
+    "telephone": "77 413 70 57",
+    "quartier": "Guédiawaye",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 13,
+    "etablissement": "Néo Pizza, Guédiawaye",
+    "telephone": "Non communiqué",
+    "quartier": "Guédiawaye",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 14,
+    "etablissement": "Rajab Resto-Pâtisserie, Cité Gadaye, Guédiawaye",
+    "telephone": "77 118 95 95",
+    "quartier": "Guédiawaye",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 15,
+    "etablissement": "Restaurant Bassirou Bara, Guédiawaye",
+    "telephone": "Non communiqué",
+    "quartier": "Guédiawaye",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 16,
+    "etablissement": "Restaurant Tawfékh, route vers la Corniche, Guédiawaye",
+    "telephone": "Non communiqué",
+    "quartier": "Guédiawaye",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 17,
+    "etablissement": "Campement Le Trarza, Route du Lac Rose, Keur Massar",
+    "telephone": "33 836 55 17",
+    "quartier": "Keur Massar / Jaxaay",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 18,
+    "etablissement": "Dibiterie Keur Massar, Route de MTOA, arrêt Dibiterie",
+    "telephone": "Non communiqué",
+    "quartier": "Keur Massar / Jaxaay",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 19,
+    "etablissement": "Djolof Chicken Keur Massar, Jaxaay-Parcelles-Niakoul Rap",
+    "telephone": "Non communiqué",
+    "quartier": "Keur Massar / Jaxaay",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 20,
+    "etablissement": "Festival des Pains, Keur Massar",
+    "telephone": "Non communiqué",
+    "quartier": "Keur Massar / Jaxaay",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 21,
+    "etablissement": "Good Verrines, Keur Massar",
+    "telephone": "Non communiqué",
+    "quartier": "Keur Massar / Jaxaay",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 22,
+    "etablissement": "Le Carrefour, Keur Massar (Niayes)",
+    "telephone": "77 384 06 84",
+    "quartier": "Keur Massar / Jaxaay",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 23,
+    "etablissement": "LōFT Restaurant Lounge, 2 voies de Jaxaay, à 100m d'Auchan Keur Massar",
+    "telephone": "77 373 80 37",
+    "quartier": "Keur Massar / Jaxaay",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 24,
+    "etablissement": "Restaurant Clair De Lune, Keur Massar",
+    "telephone": "Non communiqué",
+    "quartier": "Keur Massar / Jaxaay",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 25,
+    "etablissement": "Restaurant Eat It, Centre de Keur Massar",
+    "telephone": "33 840 35 35 / 78 139 63 63 / 78 139 83 83",
+    "quartier": "Keur Massar / Jaxaay",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 26,
+    "etablissement": "Restaurant Ker Kanni, Route du Lac Rose, Keur Massar",
+    "telephone": "33 836 55 17",
+    "quartier": "Keur Massar / Jaxaay",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 27,
+    "etablissement": "Resto Le VIP, Keur Massar",
+    "telephone": "Non communiqué",
+    "quartier": "Keur Massar / Jaxaay",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 28,
+    "etablissement": "Tacos de Lyon Keur Massar, Keur Massar",
+    "telephone": "Non communiqué",
+    "quartier": "Keur Massar / Jaxaay",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 29,
+    "etablissement": "Chez Maroné, Malika Plage",
+    "telephone": "Non communiqué",
+    "quartier": "Malika",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 30,
+    "etablissement": "Chez Ndella, Malika Plage",
+    "telephone": "Non communiqué",
+    "quartier": "Malika",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 31,
+    "etablissement": "Chez Soxou, Malika Plage (~0,6 km de la plage)",
+    "telephone": "Non communiqué",
+    "quartier": "Malika",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 32,
+    "etablissement": "Malika Diamalaye, Malika Plage",
+    "telephone": "Non communiqué",
+    "quartier": "Malika",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 33,
+    "etablissement": "Maïga, Malika Plage",
+    "telephone": "Non communiqué",
+    "quartier": "Malika",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 34,
+    "etablissement": "Restaurant de la Plage, Malika Plage",
+    "telephone": "30 117 99 31",
+    "quartier": "Malika",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 35,
+    "etablissement": "Alpha Et Omega, Route de Dalifort, Cité Hacienda, Pikine",
+    "telephone": "33 832 22 98 / 33 833 22 99",
+    "quartier": "Pikine (+ Thiaroye)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 36,
+    "etablissement": "Campement Lac Rose, Lac Rose, Pikine",
+    "telephone": "33 836 24 66 / 77 632 61 85",
+    "quartier": "Pikine (+ Thiaroye)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 37,
+    "etablissement": "Campement Palal, Lac Rose, Pikine",
+    "telephone": "33 836 26 51 / 77 633 54 77",
+    "quartier": "Pikine (+ Thiaroye)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 38,
+    "etablissement": "Club Tiossane, Thiaroye, km 14 route de Rufisque",
+    "telephone": "78 480 54 54",
+    "quartier": "Pikine (+ Thiaroye)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 39,
+    "etablissement": "Dibiterie Mouhamed, Pikine",
+    "telephone": "Non communiqué",
+    "quartier": "Pikine (+ Thiaroye)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 40,
+    "etablissement": "Djolof Chicken Pikine, Pikine",
+    "telephone": "Non communiqué",
+    "quartier": "Pikine (+ Thiaroye)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 41,
+    "etablissement": "Good Chicken, Pikine",
+    "telephone": "77 452 74 31",
+    "quartier": "Pikine (+ Thiaroye)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 42,
+    "etablissement": "Le Ndayane Dibiterie, Pikine",
+    "telephone": "Non communiqué",
+    "quartier": "Pikine (+ Thiaroye)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 43,
+    "etablissement": "O'Burger Palace, Pikine",
+    "telephone": "Non communiqué",
+    "quartier": "Pikine (+ Thiaroye)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 44,
+    "etablissement": "Restaurant Africa Sonic, Tally Boumak, Pikine",
+    "telephone": "77 459 92 76 / 77 348 37 56",
+    "quartier": "Pikine (+ Thiaroye)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 45,
+    "etablissement": "Resto Mère Bigué, Thiaroye-sur-Mer",
+    "telephone": "Non communiqué",
+    "quartier": "Pikine (+ Thiaroye)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 46,
+    "etablissement": "Sokhamon La Terrasse, Boulevard Roosevelt x Avenue Nelson Mandela, Pikine",
+    "telephone": "77 445 60 59",
+    "quartier": "Pikine (+ Thiaroye)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 47,
+    "etablissement": "Boulangerie Pâtisserie Et Restaurant Au Prestige, Boulevard Maurice Gueye, Keury Souf, Rufisque",
+    "telephone": "33 836 01 80 / 77 452 87 90",
+    "quartier": "Rufisque (+ Jaxaay)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 48,
+    "etablissement": "Café Du Pôle, Rufisque",
+    "telephone": "Non communiqué",
+    "quartier": "Rufisque (+ Jaxaay)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 49,
+    "etablissement": "Djolof Chicken Rufisque, Rufisque",
+    "telephone": "Non communiqué",
+    "quartier": "Rufisque (+ Jaxaay)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 50,
+    "etablissement": "Flamant Rose Dkr, près du Lac Rose, Rufisque",
+    "telephone": "Non communiqué",
+    "quartier": "Rufisque (+ Jaxaay)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 51,
+    "etablissement": "Karim Café, Rufisque",
+    "telephone": "Non communiqué",
+    "quartier": "Rufisque (+ Jaxaay)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 52,
+    "etablissement": "La Signare, Rufisque",
+    "telephone": "77 166 20 98",
+    "quartier": "Rufisque (+ Jaxaay)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 53,
+    "etablissement": "Ledamel, Rufisque",
+    "telephone": "Non communiqué",
+    "quartier": "Rufisque (+ Jaxaay)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 54,
+    "etablissement": "Les Saveurs de Yass, Rufisque",
+    "telephone": "Non communiqué",
+    "quartier": "Rufisque (+ Jaxaay)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 55,
+    "etablissement": "O'Bon Coin, Rufisque",
+    "telephone": "Non communiqué",
+    "quartier": "Rufisque (+ Jaxaay)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 56,
+    "etablissement": "O'LAC Restaurant, Rufisque",
+    "telephone": "Non communiqué",
+    "quartier": "Rufisque (+ Jaxaay)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 57,
+    "etablissement": "Restaurant Dibiterie Astou Fata, Rufisque Est",
+    "telephone": "Non communiqué",
+    "quartier": "Rufisque (+ Jaxaay)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 58,
+    "etablissement": "Restaurant Le Carré D'As, PA U10, Jaxaay 1, à côté du terrain urbain de foot",
+    "telephone": "78 432 49 89",
+    "quartier": "Rufisque (+ Jaxaay)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 59,
+    "etablissement": "Restaurant Rio Teranga, Immeuble Diagne Faye, Keury Kao, Rufisque",
+    "telephone": "77 122 96 16",
+    "quartier": "Rufisque (+ Jaxaay)",
+    "zone": "Banlieue"
+  },
+  {
+    "id": 60,
+    "etablissement": "Blue Note Route des Almadies, Ngor",
+    "telephone": "33 820 45 51",
+    "quartier": "Almadies / Ngor",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 61,
+    "etablissement": "D.S.J Archotel Route des Almadies, Ngor",
+    "telephone": "33 820 41 63",
+    "quartier": "Almadies / Ngor",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 62,
+    "etablissement": "La Mer à Table Les Almadies",
+    "telephone": "33 865 36 03",
+    "quartier": "Almadies / Ngor",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 63,
+    "etablissement": "Le Ngor Pieds dans l'eau Corniche des Almadies",
+    "telephone": "Non communiqué",
+    "quartier": "Almadies / Ngor",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 64,
+    "etablissement": "Mety's Square Résidences Les Mamelles, Almadies",
+    "telephone": "56 148 44",
+    "quartier": "Almadies / Ngor",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 65,
+    "etablissement": "Restaurant Alkimia Route du Méridien Président, Almadies",
+    "telephone": "33 820 68 68",
+    "quartier": "Almadies / Ngor",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 66,
+    "etablissement": "Restaurant Cap Asie Ngor",
+    "telephone": "33 820 77 77",
+    "quartier": "Almadies / Ngor",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 67,
+    "etablissement": "Restaurant Côte Sud En face Studio Xippi, Route de Ngor",
+    "telephone": "33 820 45 51",
+    "quartier": "Almadies / Ngor",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 68,
+    "etablissement": "Restaurant J'GO Route des Almadies, à côté de Tigo",
+    "telephone": "33 820 22 20",
+    "quartier": "Almadies / Ngor",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 69,
+    "etablissement": "Restaurant La Pointe Ngor",
+    "telephone": "33 820 01 40",
+    "quartier": "Almadies / Ngor",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 70,
+    "etablissement": "Restaurant Le Casino du Cap Vert Route de Ngor, Ngor",
+    "telephone": "33 820 09 74",
+    "quartier": "Almadies / Ngor",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 71,
+    "etablissement": "Restaurant Le Dionevar Les Almadies",
+    "telephone": "33 820 09 11",
+    "quartier": "Almadies / Ngor",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 72,
+    "etablissement": "Restaurant Le Midi Route de Ngor, Ngor",
+    "telephone": "33 820 45 53",
+    "quartier": "Almadies / Ngor",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 73,
+    "etablissement": "Restaurant Magnetic Terrasse Route des Almadies, Ngor",
+    "telephone": "33 820 07 54",
+    "quartier": "Almadies / Ngor",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 74,
+    "etablissement": "Bachou Suite Hôtel (restaurant), 21-22 Cité Keur Gorgui",
+    "telephone": "76 638 00 00",
+    "quartier": "Cité Keur Gorgui",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 75,
+    "etablissement": "Eggette, Rond-point Cité Keur Gorgui, à côté de Yassir",
+    "telephone": "77 881 08 08",
+    "quartier": "Cité Keur Gorgui",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 76,
+    "etablissement": "Le Grand Café, Rond-point Cité Keur Gorgui",
+    "telephone": "Non communiqué",
+    "quartier": "Cité Keur Gorgui",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 77,
+    "etablissement": "Le Traiteur Africain, Cité Keur Gorgui",
+    "telephone": "Non communiqué",
+    "quartier": "Cité Keur Gorgui",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 78,
+    "etablissement": "Ann Sabran Place de la Poste Gorée",
+    "telephone": "33 826 94 29",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 79,
+    "etablissement": "Chez Loutcha, 101 rue Mousse Diop, Plateau",
+    "telephone": "Non communiqué",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 80,
+    "etablissement": "Dakar's Pizza 4, Rue Abdou Karim Bourgi",
+    "telephone": "33 821 38 39",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 81,
+    "etablissement": "Dibiterie Machaala, 62 Bis Avenue Lamine Guèye",
+    "telephone": "33 821 52 65",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 82,
+    "etablissement": "Fast Food Adonis 27, Avenue Georges Pompidou",
+    "telephone": "33 822 40 86",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 83,
+    "etablissement": "Hotel Niani Beach Petite Corniche Est",
+    "telephone": "33 822 60 71",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 84,
+    "etablissement": "Keur N'Deye, Rue Amadou Assane Ndoye",
+    "telephone": "Non communiqué",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 85,
+    "etablissement": "Korea House Sushi Restaurant 20, Rue Carnot",
+    "telephone": "33 864 43 66",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 86,
+    "etablissement": "La Bohème 123, Rue Joseph Gomis x Bd de la République",
+    "telephone": "33 842 48 73",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 87,
+    "etablissement": "La Piazza Cafe 3, Boulevard de la République",
+    "telephone": "33 842 72 05",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 88,
+    "etablissement": "Le Bideew, 89 rue Joseph Gomis, jardin de l'Institut Français",
+    "telephone": "77 220 07 49",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 89,
+    "etablissement": "Le Dagorne, 11 rue Dagorne, Marché Kermel",
+    "telephone": "33 822 20 80",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 90,
+    "etablissement": "Le Djembe, 56 rue Docteur Thèze",
+    "telephone": "33 821 06 66",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 91,
+    "etablissement": "Patisserie La Palmeraie 20, Avenue Georges Pompidou",
+    "telephone": "33 821 15 94",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 92,
+    "etablissement": "Patisserie Le Phoenicia 71, Avenue André Peytavin",
+    "telephone": "33 212 36 8",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 93,
+    "etablissement": "Restaurant Afrika Square Rue 4 x D, Point E",
+    "telephone": "33 825 02 14",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 94,
+    "etablissement": "Restaurant Ali Baba 23, Avenue Georges Pompidou",
+    "telephone": "33 823 55 89",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 95,
+    "etablissement": "Restaurant Be King 32, Rue Victor Hugo",
+    "telephone": "33 842 87 87",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 96,
+    "etablissement": "Restaurant Fuji 19, Rue Victor Hugo",
+    "telephone": "33 821 60 00 / 77 507 22 70",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 97,
+    "etablissement": "Restaurant Grenelle 38, Rue Amadou Assane Ndoye",
+    "telephone": "33 889 44 44",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 98,
+    "etablissement": "Restaurant Jackson Burger 17, Rue Victor Hugo",
+    "telephone": "33 822 79 60",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 99,
+    "etablissement": "Restaurant L'Assiette au Grill Route de la Corniche Est",
+    "telephone": "33 823 24 00",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 100,
+    "etablissement": "Restaurant L'Encas 132, Rue Moussé Diop",
+    "telephone": "33 842 69 14",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 101,
+    "etablissement": "Restaurant La Véranda, Rue Joseph Gomis n°130",
+    "telephone": "33 823 56 17 / 77 237 39 39",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 102,
+    "etablissement": "Restaurant Le Capitol Avenue Pompidou",
+    "telephone": "33 822 31 76",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 103,
+    "etablissement": "Restaurant Le Casablanca 7, Rue El H. Mbaye Guèye",
+    "telephone": "33 822 33 32",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 104,
+    "etablissement": "Restaurant Le Dragon 35, Rue Jules Ferry",
+    "telephone": "33 821 66 76",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 105,
+    "etablissement": "Restaurant Le KYB Route de la Corniche Ouest",
+    "telephone": "64 480 30",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 106,
+    "etablissement": "Restaurant Le Montelimar 45, Rue Carnot x Dr Thèze",
+    "telephone": "33 822 06 07",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 107,
+    "etablissement": "Restaurant Le Savana Route de la Corniche Est",
+    "telephone": "33 849 42 42",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 108,
+    "etablissement": "Restaurant Le Snooker Palace 44, Rue Wagane Diouf",
+    "telephone": "33 822 94 87",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 109,
+    "etablissement": "Restaurant Le Séoul 75, Rue Amadou Assane Ndoye",
+    "telephone": "33 822 90 00",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 110,
+    "etablissement": "Restaurant Le Tacoma 9, Rue de Thann",
+    "telephone": "33 822 20 44",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 111,
+    "etablissement": "Restaurant Le Toukouleur 122, Rue Moussé Diop",
+    "telephone": "33 821 51 93",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 112,
+    "etablissement": "Restaurant Le Zaouli International 90, Rue Moussé Diop",
+    "telephone": "77 149 11 49",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 113,
+    "etablissement": "Restaurant Les Grilladins 4, Rue Abdou Karim Bourgi",
+    "telephone": "33 821 38 39",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 114,
+    "etablissement": "Restaurant Pata Pata 6, Rue Abdou Karim Bourgi",
+    "telephone": "77 620 72 72",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 115,
+    "etablissement": "Restaurant VSD 91, Rue Moussé Diop",
+    "telephone": "33 821 09 80",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 116,
+    "etablissement": "Super Dibiterie Alla Seck, 106 Avenue Blaise Diagne",
+    "telephone": "33 821 16 36",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 117,
+    "etablissement": "Yum Yum Plateau, Rue Jacques Bugnicourt",
+    "telephone": "33 822 65 65 / 33 822 65 67",
+    "quartier": "Dakar-Plateau",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 118,
+    "etablissement": "Dibiterie Cheikh Diallo, Sicap Dieuppeul 3",
+    "telephone": "Non communiqué",
+    "quartier": "Dieuppeul-Derklé",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 119,
+    "etablissement": "Dibiterie Le Walo, Square Zone A, Dieuppeul-Derklé",
+    "telephone": "33 864 03 26",
+    "quartier": "Dieuppeul-Derklé",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 120,
+    "etablissement": "Restaurant & Café Le Chef, n°2207 Dieuppeul I, villa face Université Bourguiba",
+    "telephone": "33 824 13 33",
+    "quartier": "Dieuppeul-Derklé",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 121,
+    "etablissement": "Restaurant Chez Badou Bloc Scientifique, Square Dieuppeul 3",
+    "telephone": "58 798 13",
+    "quartier": "Dieuppeul-Derklé",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 122,
+    "etablissement": "Restaurant Chez Iba Dieuppeul-Derklé",
+    "telephone": "33 824 56 66",
+    "quartier": "Dieuppeul-Derklé",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 123,
+    "etablissement": "Restaurant La Venue, Dieuppeul, derrière l'église Martyrs de l'Ouganda",
+    "telephone": "Non communiqué",
+    "quartier": "Dieuppeul-Derklé",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 124,
+    "etablissement": "Churrascaria Brasil, 7 rue Fila, Fann Hock",
+    "telephone": "33 821 00 32 / 77 523 04 92",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 125,
+    "etablissement": "Groupe Chacha, Rue A x 5/6, Point E",
+    "telephone": "33 824 53 43 / 77 403 07 07",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 126,
+    "etablissement": "L'Alibella, Rue A x Rue 3, Point E",
+    "telephone": "77 510 15 63",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 127,
+    "etablissement": "La Favela",
+    "telephone": "Non communiqué",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 128,
+    "etablissement": "La Gondole, Rue A x 23, Point E",
+    "telephone": "33 864 64 14",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 129,
+    "etablissement": "Le Balajo Face Centre National Transfusion, Avenue Cheikh Anta Diop",
+    "telephone": "Non communiqué",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 130,
+    "etablissement": "Le Djoloff (Hôtel Le Djoloff), 7 rue Nani, Fann Hock",
+    "telephone": "33 889 36 30",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 131,
+    "etablissement": "Le Phénix Jardin, Point E",
+    "telephone": "Non communiqué",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 132,
+    "etablissement": "Mini Resto 4426, Square Sicap Amitié 3",
+    "telephone": "33 825 55 73",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 133,
+    "etablissement": "Noliane Terrazza",
+    "telephone": "Non communiqué",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 134,
+    "etablissement": "O'Good Food Point E, Rue A, Point E",
+    "telephone": "Non communiqué",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 135,
+    "etablissement": "Restaurant Casino Plaza, Corniche Ouest, Fann-Hock",
+    "telephone": "76 621 69 21",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 136,
+    "etablissement": "Restaurant L'Endroit Square Amitié 3",
+    "telephone": "33 824 64 25",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 137,
+    "etablissement": "Restaurant Lalibela Ethiopien Rue Louga",
+    "telephone": "77 510 15 69",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 138,
+    "etablissement": "Restaurant Le Jardin Thaïlandais 10, Boulevard du Sud",
+    "telephone": "33 825 58 33",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 139,
+    "etablissement": "Restaurant Le Repère d'Épicure Derrière Station Shell Point E, Allée Seydou Nourou Tall",
+    "telephone": "33 869 92 92",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 140,
+    "etablissement": "Restaurant Zaïka 14 Fann - Point E - Amitié",
+    "telephone": "33 823 33 38",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 141,
+    "etablissement": "Swiss Palace",
+    "telephone": "Non communiqué",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 142,
+    "etablissement": "Tangus Fann, Place du Souvenir",
+    "telephone": "33 824 03 02 / 33 859 22 04",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 143,
+    "etablissement": "Trattoria Da Alex Angle du Boulevard de l'Est et rue de Kaolack",
+    "telephone": "Non communiqué",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 144,
+    "etablissement": "Un Instant",
+    "telephone": "Non communiqué",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 145,
+    "etablissement": "Uno Grill, Sea Plaza, Fann",
+    "telephone": "33 869 06 99",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 146,
+    "etablissement": "Yuma Restaurant, Allée Seydou Nourou Tall, Amitié 2 (à côté d'Auchan)",
+    "telephone": "Non communiqué",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 147,
+    "etablissement": "Ô Wok Bar",
+    "telephone": "Non communiqué",
+    "quartier": "Fann - Point E - Amitié",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 148,
+    "etablissement": "Fast Food Alliance Square Scat Urbam, à côté de la Brioche Dorée",
+    "telephone": "33 827 42 89",
+    "quartier": "Grand Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 149,
+    "etablissement": "Fast Food Royal HLM Grand Yoff",
+    "telephone": "33 827 98 18",
+    "quartier": "Grand Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 150,
+    "etablissement": "La Brioche Dorée Grand Yoff, Avenue Son Éminence Hyacinthe Thiandoum",
+    "telephone": "33 867 05 11",
+    "quartier": "Grand Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 151,
+    "etablissement": "Resto Ivoirien Grand Yoff, Rue GY-363, Grand Yoff",
+    "telephone": "772 05 40 36",
+    "quartier": "Grand Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 152,
+    "etablissement": "Tangus Grand Yoff, Grand Yoff",
+    "telephone": "33 824 03 02",
+    "quartier": "Grand Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 153,
+    "etablissement": "Chez Bassirou Diaw, Colobane 1",
+    "telephone": "Non communiqué",
+    "quartier": "Gueule Tapée - Fass - Colobane",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 154,
+    "etablissement": "La Playa",
+    "telephone": "Non communiqué",
+    "quartier": "Gueule Tapée - Fass - Colobane",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 155,
+    "etablissement": "Restaurant Caesar's Gueule Tapée - Fass - Colobane",
+    "telephone": "33 842 50 05",
+    "quartier": "Gueule Tapée - Fass - Colobane",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 156,
+    "etablissement": "Tangus Gueule Tapée, Lycée Maurice Delafosse",
+    "telephone": "33 824 03 02",
+    "quartier": "Gueule Tapée - Fass - Colobane",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 157,
+    "etablissement": "Yeksil Café Colobane, Colobane",
+    "telephone": "Non communiqué",
+    "quartier": "Gueule Tapée - Fass - Colobane",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 158,
+    "etablissement": "Brioche Dorée HLM, Avenue Sérigne Fallou Mbacké, Grand Dakar/Biscuiterie",
+    "telephone": "33 868 41 22",
+    "quartier": "HLM",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 159,
+    "etablissement": "Chez Aïssata Ba, Rue HLM-181",
+    "telephone": "Non communiqué",
+    "quartier": "HLM",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 160,
+    "etablissement": "O'Good Food HLM, Rue 13, HLM",
+    "telephone": "33 825 97 22",
+    "quartier": "HLM",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 161,
+    "etablissement": "Tangus HLM, Zone Industrielle",
+    "telephone": "33 824 03 02",
+    "quartier": "HLM",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 162,
+    "etablissement": "Auberge de l'Escale Square Keur Emilie, Hann Marinas",
+    "telephone": "33 832 79 81",
+    "quartier": "Hann-Bel Air",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 163,
+    "etablissement": "La Voile D'Or, Plage de Bel Air",
+    "telephone": "33 832 86 48 / 77 833 94 40",
+    "quartier": "Hann-Bel Air",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 164,
+    "etablissement": "Restaurant La Corvette Hann-Bel-Air",
+    "telephone": "33 832 04 59",
+    "quartier": "Hann-Bel Air",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 165,
+    "etablissement": "Restaurant La Siesta 5, Km, Hann-Bel Air",
+    "telephone": "33 832 46 65",
+    "quartier": "Hann-Bel Air",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 166,
+    "etablissement": "Restaurant Maan Gaan Cristal En face de l'Ecobank, Square Hann Mariste",
+    "telephone": "33 848 12 60 / 30 100 70 64",
+    "quartier": "Hann-Bel Air",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 167,
+    "etablissement": "Achou Traiteur, Sacré Cœur 3 n°9312",
+    "telephone": "78 013 14 14",
+    "quartier": "Mermoz - Sacré-Cœur",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 168,
+    "etablissement": "Brown's Food, 2 voies Sacré Cœur, Sacré Cœur 3",
+    "telephone": "77 347 48 07",
+    "quartier": "Mermoz - Sacré-Cœur",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 169,
+    "etablissement": "KeurGui, Mermoz, près cinéma Pathé",
+    "telephone": "Non communiqué",
+    "quartier": "Mermoz - Sacré-Cœur",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 170,
+    "etablissement": "Kisakala, Sacré Cœur 1",
+    "telephone": "33 865 06 06",
+    "quartier": "Mermoz - Sacré-Cœur",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 171,
+    "etablissement": "La Baie d'Along 154, Avenue Bourguiba, Sicap Baobab",
+    "telephone": "33 824 16 69",
+    "quartier": "Mermoz - Sacré-Cœur",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 172,
+    "etablissement": "Le Mirador, Sacré Cœur 3",
+    "telephone": "77 439 03 38",
+    "quartier": "Mermoz - Sacré-Cœur",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 173,
+    "etablissement": "Mami Mia, 120 Mermoz Pyrotechnique, route de Ouakam",
+    "telephone": "33 860 25 25",
+    "quartier": "Mermoz - Sacré-Cœur",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 174,
+    "etablissement": "Restaurant / La Piazzola 208, Rue MZ, Mermoz-Sacré Cœur",
+    "telephone": "33 860 36 14",
+    "quartier": "Mermoz - Sacré-Cœur",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 175,
+    "etablissement": "Restaurant L'Epicea 37 B Mermoz Sacre Coeur",
+    "telephone": "33 860 39 66",
+    "quartier": "Mermoz - Sacré-Cœur",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 176,
+    "etablissement": "Restaurant Le Mawouli 10224, Rue Abdou Aziz Sy",
+    "telephone": "33 824 30 05",
+    "quartier": "Mermoz - Sacré-Cœur",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 177,
+    "etablissement": "Restaurant Trofêt 8245, Square Sicap Sacré Coeur 1",
+    "telephone": "77 227 65 80",
+    "quartier": "Mermoz - Sacré-Cœur",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 178,
+    "etablissement": "Tangus Mermoz Sacré-Cœur, Rond-Point JVC",
+    "telephone": "33 824 03 02",
+    "quartier": "Mermoz - Sacré-Cœur",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 179,
+    "etablissement": "Dibiterie Le Mboté, Rue 6x11, Médina",
+    "telephone": "33 822 13 88",
+    "quartier": "Médina",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 180,
+    "etablissement": "La Médine (boulangerie-pâtisserie-fast food), 44 avenue Président Macky Sall, Médina",
+    "telephone": "33 823 17 13",
+    "quartier": "Médina",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 181,
+    "etablissement": "Restaurant Le Gallard Rue 6 x 15, Medina",
+    "telephone": "33 821 06 87",
+    "quartier": "Médina",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 182,
+    "etablissement": "Restaurant Moss Doli, Médina",
+    "telephone": "Non communiqué",
+    "quartier": "Médina",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 183,
+    "etablissement": "Tangus Médina, devant la BCEAO, Médina",
+    "telephone": "33 824 03 02",
+    "quartier": "Médina",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 184,
+    "etablissement": "Barakah Pâtisserie, 11 Nord Foire Azur, derrière Complexe Yengoulène",
+    "telephone": "77 720 13 03",
+    "quartier": "Nord Foire",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 185,
+    "etablissement": "Jet Café, Nord Foire",
+    "telephone": "77 845 24 53",
+    "quartier": "Nord Foire",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 186,
+    "etablissement": "La Royale Délices, SDE Nord Foire",
+    "telephone": "78 296 06 00",
+    "quartier": "Nord Foire",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 187,
+    "etablissement": "Le Tandem Lounge Take Away Food, Villa n°34, Cité BCEAO 1, Nord Foire",
+    "telephone": "77 695 53 53",
+    "quartier": "Nord Foire",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 188,
+    "etablissement": "Yum Yum Nord Foire, Nord Foire",
+    "telephone": "Non communiqué",
+    "quartier": "Nord Foire",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 189,
+    "etablissement": "Eveil et Sens Route de Ouakam",
+    "telephone": "33 825 35 32",
+    "quartier": "Ouakam",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 190,
+    "etablissement": "La Terrasse de Ouakam, Route de Ouakam",
+    "telephone": "33 820 74 07",
+    "quartier": "Ouakam",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 191,
+    "etablissement": "Le Comptoir Ouakam, Rue OKM-60",
+    "telephone": "771 34 81 81",
+    "quartier": "Ouakam",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 192,
+    "etablissement": "Le Régal, Ouakam Cité Africa",
+    "telephone": "33 824 40 24 / 77 652 46 25",
+    "quartier": "Ouakam",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 193,
+    "etablissement": "Panam'as Ouakam",
+    "telephone": "33 824 71 99",
+    "quartier": "Ouakam",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 194,
+    "etablissement": "Restaurant Akwaba Chez Esther, après l'église bleue, ruelle boutique Ya Aïcha, Ouakam",
+    "telephone": "78 468 79 06",
+    "quartier": "Ouakam",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 195,
+    "etablissement": "Tangus Ouakam, Route de Ouakam",
+    "telephone": "33 824 03 02",
+    "quartier": "Ouakam",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 196,
+    "etablissement": "Wagokoro (japonais), Villa N-11 Ballon Ouakam",
+    "telephone": "77 796 90 58",
+    "quartier": "Ouakam",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 197,
+    "etablissement": "Yum Yum Ouakam, Carrefour entrée Ouakam, près SGBS",
+    "telephone": "33 865 62 62",
+    "quartier": "Ouakam",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 198,
+    "etablissement": "Complexe Le Taïf 12 (unité) Parcelles Assainies",
+    "telephone": "33 835 42 86",
+    "quartier": "Parcelles Assainies",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 199,
+    "etablissement": "Dibiterie Ouba, Rue GY-24 (autre point : Allées Khalifa Ababacar Sy)",
+    "telephone": "77 633 57 57",
+    "quartier": "Parcelles Assainies",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 200,
+    "etablissement": "Djolof Chicken, Rue PA17-02",
+    "telephone": "338 35 59 45",
+    "quartier": "Parcelles Assainies",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 201,
+    "etablissement": "Restaurant Ideal Fast Food 615, Rue 52",
+    "telephone": "33 835 48 42",
+    "quartier": "Parcelles Assainies",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 202,
+    "etablissement": "Saveurs D'Asie, en face du rond-point Tally Boubess",
+    "telephone": "33 855 98 58",
+    "quartier": "Parcelles Assainies",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 203,
+    "etablissement": "Tangus Parcelles Assainies, Caserne des Pompiers",
+    "telephone": "33 824 03 02",
+    "quartier": "Parcelles Assainies",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 204,
+    "etablissement": "Cité Barbecue, Patte d'Oie, Builders Villa K3",
+    "telephone": "33 855 58 58 / 78 018 16 25",
+    "quartier": "Patte d'Oie",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 205,
+    "etablissement": "Restaurant Fast Food Petit Bidon, à côté de la Mairie, Patte d'Oie",
+    "telephone": "33 855 98 58",
+    "quartier": "Patte d'Oie",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 206,
+    "etablissement": "Restaurant Saveurs d'Asie Parcelles Square Patte d'Oies Builders",
+    "telephone": "33 855 98 58",
+    "quartier": "Patte d'Oie",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 207,
+    "etablissement": "Pâtisserie Kanel, 573 Sicap Baobabs, Dakar-Marine",
+    "telephone": "77 330 64 64",
+    "quartier": "Sicap Baobabs",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 208,
+    "etablissement": "Restaurant Le Thiof, Villa n°944, Sicap Baobab",
+    "telephone": "33 824 62 07 / 77 637 52 04",
+    "quartier": "Sicap Baobabs",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 209,
+    "etablissement": "Restaurant Tàqamtiku, Sicap Baobab, près du Baobab",
+    "telephone": "Non communiqué",
+    "quartier": "Sicap Baobabs",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 210,
+    "etablissement": "Diakarlo Sicap Liberté 2, face Stade Demba Diop",
+    "telephone": "33 865 55 13",
+    "quartier": "Sicap Liberté",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 211,
+    "etablissement": "La VDN, Liberté 6 Extension, VDN",
+    "telephone": "33 867 61 00 / 78 304 53 53",
+    "quartier": "Sicap Liberté",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 212,
+    "etablissement": "Le Pélican, 2 voies Liberté 6, près mosquée Abass Sall",
+    "telephone": "33 801 12 12",
+    "quartier": "Sicap Liberté",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 213,
+    "etablissement": "Restaurant Cayenne Traiteur 249, Square Cité Sipres 2",
+    "telephone": "33 867 33 35 / 77 631 87 90",
+    "quartier": "Sicap Liberté",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 214,
+    "etablissement": "Restaurant Keur Meissa Square Liberté 6 Extension",
+    "telephone": "77 706 06 97",
+    "quartier": "Sicap Liberté",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 215,
+    "etablissement": "Restaurant Naweli Sicap-Liberté",
+    "telephone": "33 867 13 43",
+    "quartier": "Sicap Liberté",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 216,
+    "etablissement": "Restaurant Panam'as, Liberté 6",
+    "telephone": "33 867 41 99",
+    "quartier": "Sicap Liberté",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 217,
+    "etablissement": "Tacos de Lyon Liberté 6, Rue SC-93, 127",
+    "telephone": "33 825 56 56",
+    "quartier": "Sicap Liberté",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 218,
+    "etablissement": "Tradicon, Liberté 6 Extension",
+    "telephone": "33 824 21 08",
+    "quartier": "Sicap Liberté",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 219,
+    "etablissement": "Auberge du 12ème Gaindé 70, Route des Cimetières, Yoff",
+    "telephone": "33 820 82 04",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 220,
+    "etablissement": "Cayor Grill, Yoff",
+    "telephone": "Non communiqué",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 221,
+    "etablissement": "Complexe Lebou Gui 304, Rue Sans Soleil, Yoff",
+    "telephone": "77 655 88 78",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 222,
+    "etablissement": "Dakar Restauration Square Aéroport Léopold Sédar Senghor, Yoff",
+    "telephone": "33 865 50 36 / 33 820 88 64",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 223,
+    "etablissement": "Frite Royale Dakar, Yoff",
+    "telephone": "Non communiqué",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 224,
+    "etablissement": "La Fiesta Glacier Ouest Foire, Ouest Foire",
+    "telephone": "Non communiqué",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 225,
+    "etablissement": "Pan Africa Ouest Foire (crêpes), Ouest Foire",
+    "telephone": "Non communiqué",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 226,
+    "etablissement": "Restaurant Bella Italia 3, Route de l'Aéroport, Yoff",
+    "telephone": "33 820 75 78",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 227,
+    "etablissement": "Restaurant Figo Route de l'Aéroport, Yoff",
+    "telephone": "77 161 74 74 / 76 531 26 26",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 228,
+    "etablissement": "Restaurant Hong Kong II Route de l'Aéroport, Yoff",
+    "telephone": "33 820 02 36",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 229,
+    "etablissement": "Restaurant L'Ambassadeur 1, Route de l'Aéroport, Cité Adama Diop",
+    "telephone": "33 820 71 22",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 230,
+    "etablissement": "Restaurant Le Gourmet Route de l'Aéroport, Yoff",
+    "telephone": "33 820 26 80",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 231,
+    "etablissement": "Restaurant Le Toucan Yoff",
+    "telephone": "33 820 90 39",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 232,
+    "etablissement": "Restaurant Ocean Square Yoff Ranrhar",
+    "telephone": "33 820 00 47",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 233,
+    "etablissement": "Restaurant Planète-Food, Yoff",
+    "telephone": "Non communiqué",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 234,
+    "etablissement": "Résidence Ouest Foire Khandar (restaurant d'hôtel), n°27, Ouest Foire Khandar",
+    "telephone": "77 912 51 68",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  },
+  {
+    "id": 235,
+    "etablissement": "Salimtoo Ouest Foire, Ouest Foire, Yoff",
+    "telephone": "Non communiqué",
+    "quartier": "Yoff",
+    "zone": "Dakar intra-muros"
+  }
+]
