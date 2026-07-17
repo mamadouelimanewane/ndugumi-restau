@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { useCrmStore } from '../store/useCrmStore'
 
@@ -20,41 +21,62 @@ const links = [
 export default function Sidebar() {
   const currentAgent = useCrmStore((s) => s.currentAgent)
   const setCurrentAgent = useCrmStore((s) => s.setCurrentAgent)
+  const [open, setOpen] = useState(false)
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-brand">
-        Restau CRM
-        <small>Prospection NDUGUMi</small>
-      </div>
-      <nav className="sidebar-nav">
-        {links.map((l) => (
-          <NavLink
-            key={l.to}
-            to={l.to}
-            end={l.end}
-            className={({ isActive }) => 'sidebar-link' + (isActive ? ' active' : '')}
-          >
-            <span>{l.icon}</span>
-            <span>{l.label}</span>
-          </NavLink>
-        ))}
-      </nav>
-      <div className="sidebar-footer">
-        Connecté : <strong>{currentAgent ?? '—'}</strong>{' '}
-        <button
-          onClick={() => setCurrentAgent(null)}
-          style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: 0, fontSize: 11 }}
-        >
-          Changer
+    <>
+      <div className="mobile-topbar">
+        <button className="mobile-menu-btn" onClick={() => setOpen(true)} aria-label="Ouvrir le menu">
+          ☰
         </button>
-        <br />
-        Outil interne de relation client
-        <br />
-        pour la prospection des restaurants
-        <br />
-        de Dakar &amp; banlieue &mdash; NDUGUMi.
+        <span className="mobile-topbar-brand">Restau CRM</span>
+        <span style={{ width: 24 }} />
       </div>
-    </aside>
+
+      {open && <div className="sidebar-overlay" onClick={() => setOpen(false)} />}
+
+      <aside className={'sidebar' + (open ? ' open' : '')}>
+        <div className="sidebar-brand">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <span>
+              Restau CRM
+              <small>Prospection NDUGUMi</small>
+            </span>
+            <button className="sidebar-close-btn" onClick={() => setOpen(false)} aria-label="Fermer le menu">
+              ✕
+            </button>
+          </div>
+        </div>
+        <nav className="sidebar-nav">
+          {links.map((l) => (
+            <NavLink
+              key={l.to}
+              to={l.to}
+              end={l.end}
+              onClick={() => setOpen(false)}
+              className={({ isActive }) => 'sidebar-link' + (isActive ? ' active' : '')}
+            >
+              <span>{l.icon}</span>
+              <span>{l.label}</span>
+            </NavLink>
+          ))}
+        </nav>
+        <div className="sidebar-footer">
+          Connecté : <strong>{currentAgent ?? '—'}</strong>{' '}
+          <button
+            onClick={() => setCurrentAgent(null)}
+            style={{ background: 'none', border: 'none', color: 'var(--accent)', cursor: 'pointer', padding: 0, fontSize: 11 }}
+          >
+            Changer
+          </button>
+          <br />
+          Outil interne de relation client
+          <br />
+          pour la prospection des restaurants
+          <br />
+          de Dakar &amp; banlieue &mdash; NDUGUMi.
+        </div>
+      </aside>
+    </>
   )
 }

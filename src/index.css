@@ -50,6 +50,29 @@ button {
   min-height: 100vh;
 }
 
+.mobile-topbar {
+  display: none;
+}
+
+.mobile-menu-btn,
+.sidebar-close-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
+.sidebar-close-btn {
+  display: none;
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
 .sidebar {
   width: 230px;
   flex-shrink: 0;
@@ -419,4 +442,118 @@ textarea {
   font-size: 13px;
   padding: 30px;
   text-align: center;
+}
+
+/* Tables scroll horizontally instead of squashing columns unreadably */
+@media (max-width: 960px) {
+  table.data-table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    min-width: 0;
+  }
+  table.data-table tr {
+    width: max-content;
+    min-width: 100%;
+  }
+}
+
+/* Sidebar becomes an off-canvas drawer below 880px */
+@media (max-width: 880px) {
+  .app-shell {
+    display: block;
+  }
+
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--sidebar-bg);
+    padding: 10px 14px;
+    position: sticky;
+    top: 0;
+    z-index: 40;
+  }
+
+  .mobile-topbar-brand {
+    color: #fff;
+    font-weight: 700;
+    font-size: 15px;
+  }
+
+  .sidebar-close-btn {
+    display: inline-block;
+  }
+
+  .sidebar-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    z-index: 45;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 260px;
+    height: 100vh;
+    z-index: 50;
+    transition: left 0.2s ease;
+    box-shadow: 2px 0 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .sidebar.open {
+    left: 0;
+  }
+
+  .main {
+    padding: 16px;
+  }
+
+  .page-header {
+    align-items: flex-start;
+  }
+
+  .page-title {
+    font-size: 19px;
+  }
+
+  .kpi-value {
+    font-size: 21px;
+  }
+
+  .detail-grid {
+    gap: 14px;
+  }
+
+  .panel {
+    padding: 14px 14px;
+  }
+
+  .kanban {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .main {
+    padding: 12px;
+  }
+
+  .filters-bar input[type='text'] {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .page-header > div:last-child {
+    display: flex;
+    flex-wrap: wrap;
+  }
 }
