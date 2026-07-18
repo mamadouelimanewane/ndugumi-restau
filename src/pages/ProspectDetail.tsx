@@ -18,9 +18,12 @@ import {
 } from '../types'
 import StatutBadge from '../components/StatutBadge'
 import PhoneQuickActions from '../components/PhoneQuickActions'
-import { isLate } from '../utils/joined'
+import { isLate, joinProspects } from '../utils/joined'
+import { computeQuartierDensity } from '../utils/priority'
 import { waLinkWithText } from '../utils/phone'
+import { mailtoLink } from '../utils/email'
 import { exportVisitCardPdf } from '../utils/pdf'
+import { fetchAiSummary, fetchAiMessage, fetchAiScore } from '../utils/ai'
 
 export default function ProspectDetail() {
   const { id } = useParams()
@@ -62,6 +65,11 @@ export default function ProspectDetail() {
     [tasks, restaurantId]
   )
 
+  const quartierDensity = useMemo(
+    () => computeQuartierDensity(joinProspects(restaurants, prospects)),
+    [restaurants, prospects]
+  )
+
   const [editingInfo, setEditingInfo] = useState(false)
   const [editNom, setEditNom] = useState(restaurant?.etablissement ?? '')
   const [editTel, setEditTel] = useState(restaurant?.telephone ?? '')
@@ -89,6 +97,22 @@ export default function ProspectDetail() {
   const [selectedQty, setSelectedQty] = useState<Record<string, number>>({})
   const [proposalMessage, setProposalMessage] = useState('')
   const [proposalAgent, setProposalAgent] = useState(currentAgent || crm?.agent || agents[0])
+
+  const [aiSummary, setAiSummary] = useState<string | null>(null)
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false)
+  const [aiSummaryError, setAiSummaryError] = useState<string | null>(null)
+
+  const [aiMessageCanal, setAiMessageCanal] = useState<'whatsapp' | 'email'>('whatsapp')
+  const [aiMessageObjectif, setAiMessageObjectif] = useState('')
+  const [aiMessageSujet, setAiMessageSujet] = useState('')
+  const [aiMessageCorps, setAiMessageCorps] = useState('')
+  const [aiMessageLoading, setAiMessageLoading] = useState(false)
+  const [aiMessageError, setAiMessageError] = useState<string | null>(null)
+  const [aiMessageAgent, setAiMessageAgent] = useState(currentAgent || crm?.agent || agents[0])
+
+  const [aiScore, setAiScore] = useState<{ score: number; raison: string; prochaineAction: string } | null>(null)
+  const [aiScoreLoading, setAiScoreLoading] = useState(false)
+  const [aiScoreError, setAiScoreError] = useState<string | null>(null)
 
   if (!restaurant || !crm) {
     return (
@@ -223,6 +247,101 @@ export default function ProspectDetail() {
     addNote(restaurantId, 'proposition', proposalMessage.trim(), proposalAgent)
   }
 
+  async function handleGenerateSummary() {
+    setAiSummaryLoading(true)
+    setAiSummaryError(null)
+    try {
+      const { summary } = await fetchAiSummary({
+        etablissement: restaurant.etablissement,
+        quartier: restaurant.quartier,
+        zone: restaurant.zone,
+        statut: STATUT_LABELS[crm.statut],
+        agent: crm.agent || 'Non assigné',
+        prochaineRelance: crm.prochaineRelance,
+        tags: crm.tags,
+        notes: crm.notes.map((n) => ({ date: n.date, type: INTERACTION_LABELS[n.type], texte: n.texte })),
+        tasks: restaurantTasks
+          .filter((t) => t.statut === 'a_faire')
+          .map((t) => ({ titre: t.titre, dateEcheance: t.dateEcheance, statut: t.statut })),
+        ndugumiInscrit: crm.ndugumi.inscrit,
+      })
+      setAiSummary(summary)
+    } catch (e: any) {
+      setAiSummaryError(e?.message || 'Erreur inconnue')
+    } finally {
+      setAiSummaryLoading(false)
+    }
+  }
+
+  async function handleGenerateAiMessage() {
+    setAiMessageLoading(true)
+    setAiMessageError(null)
+    try {
+      const { sujet, corps } = await fetchAiMessage({
+        etablissement: restaurant.etablissement,
+        quartier: restaurant.quartier,
+        statut: STATUT_LABELS[crm.statut],
+        tags: crm.tags,
+        canal: aiMessageCanal,
+        objectif: aiMessageObjectif.trim(),
+        recentNotes: crm.notes.slice(0, 5).map((n) => ({ date: n.date, texte: n.texte })),
+      })
+      setAiMessageSujet(sujet)
+      setAiMessageCorps(corps)
+    } catch (e: any) {
+      setAiMessageError(e?.message || 'Erreur inconnue')
+    } finally {
+      setAiMessageLoading(false)
+    }
+  }
+
+  function handleSendAiMessage() {
+    if (!aiMessageCorps.trim()) return
+    if (aiMessageCanal === 'whatsapp') {
+      const phone = crm.contacts.find((c) => c.principal)?.telephone || restaurant.telephone
+      const link = waLinkWithText(phone, aiMessageCorps.trim())
+      if (!link) {
+        alert('Aucun numéro de téléphone exploitable pour ce restaurant.')
+        return
+      }
+      window.open(link, '_blank', 'noopener,noreferrer')
+    } else {
+      const email = crm.contacts.find((c) => c.principal && c.email)?.email || crm.contacts.find((c) => c.email)?.email
+      if (!email) {
+        alert("Aucune adresse email connue pour ce restaurant (ajoutez un contact avec email).")
+        return
+      }
+      const link = mailtoLink(email, aiMessageSujet, aiMessageCorps.trim())
+      if (!link) return
+      window.open(link, '_blank')
+    }
+    addNote(restaurantId, aiMessageCanal, aiMessageCorps.trim(), aiMessageAgent)
+  }
+
+  async function handleEvaluateScore() {
+    setAiScoreLoading(true)
+    setAiScoreError(null)
+    try {
+      const overdueTasks = restaurantTasks.filter((t) => t.statut === 'a_faire' && isLate(t.dateEcheance)).length
+      const result = await fetchAiScore({
+        etablissement: restaurant.etablissement,
+        quartier: restaurant.quartier,
+        statut: STATUT_LABELS[crm.statut],
+        hasContact: crm.contacts.length > 0,
+        tags: crm.tags,
+        notes: crm.notes.map((n) => ({ date: n.date, type: INTERACTION_LABELS[n.type], texte: n.texte })),
+        overdueTasks,
+        overdueRelance: isLate(crm.prochaineRelance),
+        quartierClientsCount: quartierDensity[restaurant.quartier] ?? 0,
+      })
+      setAiScore(result)
+    } catch (e: any) {
+      setAiScoreError(e?.message || 'Erreur inconnue')
+    } finally {
+      setAiScoreLoading(false)
+    }
+  }
+
   return (
     <div>
       <Link className="link-back" to="/prospects">
@@ -241,6 +360,100 @@ export default function ProspectDetail() {
             Fiche de visite (PDF)
           </button>
           <StatutBadge statut={crm.statut} />
+        </div>
+      </div>
+
+      <div className="panel">
+        <h3>Assistant IA</h3>
+        <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: -8, marginBottom: 14 }}>
+          Suggestions générées par IA (DeepSeek) — à relire avant d'envoyer ou d'agir, ce n'est pas toujours exact.
+        </p>
+
+        <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 14, marginBottom: 14 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <strong style={{ fontSize: 13 }}>Résumé de la fiche</strong>
+            <button className="btn secondary small" onClick={handleGenerateSummary} disabled={aiSummaryLoading}>
+              {aiSummaryLoading ? 'Génération…' : 'Générer le résumé'}
+            </button>
+          </div>
+          {aiSummaryError && <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 8 }}>{aiSummaryError}</div>}
+          {aiSummary && <div className="note-text" style={{ marginTop: 8 }}>{aiSummary}</div>}
+        </div>
+
+        <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: 14, marginBottom: 14 }}>
+          <strong style={{ fontSize: 13 }}>Message personnalisé</strong>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', margin: '8px 0' }}>
+            <select value={aiMessageCanal} onChange={(e) => setAiMessageCanal(e.target.value as 'whatsapp' | 'email')}>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="email">Email</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Objectif (ex : relancer avec une offre, annoncer une nouveauté…)"
+              value={aiMessageObjectif}
+              onChange={(e) => setAiMessageObjectif(e.target.value)}
+              style={{ flex: '1 1 220px' }}
+            />
+            <button className="btn secondary small" onClick={handleGenerateAiMessage} disabled={aiMessageLoading}>
+              {aiMessageLoading ? 'Génération…' : 'Générer le message'}
+            </button>
+          </div>
+          {aiMessageError && <div style={{ color: 'var(--danger)', fontSize: 12 }}>{aiMessageError}</div>}
+          {(aiMessageCorps || aiMessageLoading) && (
+            <>
+              {aiMessageCanal === 'email' && (
+                <div className="field-row">
+                  <label>Sujet</label>
+                  <input type="text" value={aiMessageSujet} onChange={(e) => setAiMessageSujet(e.target.value)} />
+                </div>
+              )}
+              <div className="field-row">
+                <label>Message (modifiable)</label>
+                <textarea value={aiMessageCorps} onChange={(e) => setAiMessageCorps(e.target.value)} style={{ minHeight: 100 }} />
+              </div>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <select value={aiMessageAgent} onChange={(e) => setAiMessageAgent(e.target.value)}>
+                  {agents.map((a) => (
+                    <option key={a} value={a}>
+                      {a}
+                    </option>
+                  ))}
+                </select>
+                <button className="btn small" onClick={handleSendAiMessage} disabled={!aiMessageCorps.trim()}>
+                  Envoyer via {aiMessageCanal === 'whatsapp' ? 'WhatsApp' : 'Email'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+            <strong style={{ fontSize: 13 }}>Score de conversion prédictif</strong>
+            <button className="btn secondary small" onClick={handleEvaluateScore} disabled={aiScoreLoading}>
+              {aiScoreLoading ? 'Évaluation…' : 'Évaluer avec l\'IA'}
+            </button>
+          </div>
+          {aiScoreError && <div style={{ color: 'var(--danger)', fontSize: 12, marginTop: 8 }}>{aiScoreError}</div>}
+          {aiScore && (
+            <div style={{ marginTop: 10, display: 'flex', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+              <div
+                style={{
+                  fontSize: 28,
+                  fontWeight: 700,
+                  color: aiScore.score >= 60 ? 'var(--ok)' : aiScore.score >= 30 ? 'var(--warn)' : 'var(--danger)',
+                  minWidth: 60,
+                }}
+              >
+                {aiScore.score}
+                <span style={{ fontSize: 13, color: 'var(--text-dim)' }}> / 100</span>
+              </div>
+              <div style={{ flex: '1 1 220px', fontSize: 12.5 }}>
+                <div>{aiScore.raison}</div>
+                <div style={{ marginTop: 6, fontWeight: 600 }}>Action suggérée : {aiScore.prochaineAction}</div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
