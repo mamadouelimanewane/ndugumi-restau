@@ -29,6 +29,12 @@ import {
   type UserProfileMap,
   type Order,
   type OrderMap,
+  type Attachment,
+  type AttachmentKind,
+  type AuditEntry,
+  type Segment,
+  type SegmentMap,
+  type SegmentFilter,
   defaultDeal,
   defaultNdugumi,
   defaultUserProfile,
@@ -109,10 +115,14 @@ function makeDefaultState(): ProspectState {
     deal: defaultDeal(),
     ndugumi: defaultNdugumi(),
     statutHistory: [{ statut: 'nouveau', date: now, agent: 'Non assigné' }],
+    attachments: [],
+    concurrentActuel: '',
     createdAt: now,
     updatedAt: now,
   }
 }
+
+const MAX_AUDIT_ENTRIES = 3000
 
 export const DEFAULT_AGENTS = ['Non assigné', 'Mamadou', 'Astou', 'Cheikh', 'Fatou', 'Ibrahima']
 
@@ -140,6 +150,8 @@ export interface CrmBackup {
   userProfiles: UserProfileMap
   currentAgent: string | null
   orders: OrderMap
+  auditLog: AuditEntry[]
+  segments: SegmentMap
   exportedAt: string
 }
 
@@ -157,6 +169,8 @@ interface CrmStore {
   userProfiles: UserProfileMap
   currentAgent: string | null
   orders: OrderMap
+  auditLog: AuditEntry[]
+  segments: SegmentMap
 
   ensureAll: () => void
 
@@ -205,6 +219,20 @@ interface CrmStore {
   importOrders: (orders: Omit<Order, 'id' | 'importedAt'>[]) => { imported: number; skipped: number }
   setOrderRestaurant: (id: string, restaurantId: number | null) => void
 
+  // Concurrence
+  setConcurrent: (id: number, concurrentActuel: string) => void
+
+  // Pièces jointes (métadonnées — les blobs vivent dans IndexedDB, voir utils/attachmentsDb.ts)
+  addAttachmentMeta: (id: number, kind: AttachmentKind, nom: string, type: string, taille: number, agent: string) => string
+  removeAttachmentMeta: (id: number, attachmentId: string) => void
+
+  // Journal d'audit
+  logAudit: (restaurantId: number, agent: string, action: string, details: string) => void
+
+  // Segments (filtres sauvegardés)
+  addSegment: (nom: string, filtre: SegmentFilter) => string
+  removeSegment: (id: string) => void
+
   // Catalogue produits
   addProduct: (data: Omit<Product, 'id'>) => void
   updateProduct: (id: string, fields: Partial<Omit<Product, 'id'>>) => void
@@ -244,6 +272,16 @@ export const useCrmStore = create<CrmStore>()(
       userProfiles: makeDefaultUserProfiles(),
       currentAgent: null,
       orders: {},
+      auditLog: [],
+      segments: {},
+
+      logAudit: (restaurantId, agent, action, details) => {
+        const entry: AuditEntry = { id: crypto.randomUUID(), restaurantId, date: todayISO(), agent, action, details }
+        set((s) => {
+          const next = [entry, ...s.auditLog]
+          return { auditLog: next.length > MAX_AUDIT_ENTRIES ? next.slice(0, MAX_AUDIT_ENTRIES) : next }
+        })
+      },
 
       ensureAll: () => {
         const state = get()
@@ -285,6 +323,8 @@ export const useCrmStore = create<CrmStore>()(
       },
 
       deleteRestaurant: (id) => {
+        const nom = get().restaurants[id]?.etablissement ?? `#${id}`
+        const agent = get().prospects[id]?.agent || 'Non assigné'
         set((s) => {
           const restaurants = { ...s.restaurants }
           const prospects = { ...s.prospects }
@@ -295,37 +335,48 @@ export const useCrmStore = create<CrmStore>()(
           )
           return { restaurants, prospects, tasks }
         })
+        get().logAudit(id, agent, 'Restaurant supprimé', nom)
       },
 
       setStatut: (id, statut) => {
+        const existing = get().prospects[id] ?? makeDefaultState()
+        const previousStatut = existing.statut
         set((s) => {
-          const existing = s.prospects[id] ?? makeDefaultState()
+          const current = s.prospects[id] ?? makeDefaultState()
           const entry: StatutHistoryEntry = {
             statut,
             date: todayISO(),
-            agent: existing.agent || 'Non assigné',
+            agent: current.agent || 'Non assigné',
           }
           return {
             prospects: {
               ...s.prospects,
               [id]: {
-                ...existing,
+                ...current,
                 statut,
-                statutHistory: [entry, ...existing.statutHistory],
+                statutHistory: [entry, ...current.statutHistory],
                 updatedAt: todayISO(),
               },
             },
           }
         })
+        if (previousStatut !== statut) {
+          get().logAudit(id, existing.agent || 'Non assigné', 'Statut changé', `${previousStatut} → ${statut}`)
+        }
       },
 
       setAgent: (id, agent) => {
+        const existing = get().prospects[id] ?? makeDefaultState()
+        const previousAgent = existing.agent || 'Non assigné'
         set((s) => ({
           prospects: {
             ...s.prospects,
             [id]: { ...(s.prospects[id] ?? makeDefaultState()), agent, updatedAt: todayISO() },
           },
         }))
+        if (previousAgent !== (agent || 'Non assigné')) {
+          get().logAudit(id, agent || 'Non assigné', 'Agent réassigné', `${previousAgent} → ${agent || 'Non assigné'}`)
+        }
       },
 
       setRelance: (id, date) => {
@@ -360,6 +411,8 @@ export const useCrmStore = create<CrmStore>()(
             },
           }
         })
+        const agent = get().prospects[id]?.agent || 'Non assigné'
+        get().logAudit(id, agent, 'Compte client modifié', Object.keys(deal).join(', '))
       },
 
       setNdugumi: (id, fields) => {
@@ -372,9 +425,63 @@ export const useCrmStore = create<CrmStore>()(
             },
           }
         })
+        const agent = get().prospects[id]?.agent || 'Non assigné'
+        get().logAudit(id, agent, 'Compte NDUGUMi modifié', Object.keys(fields).join(', '))
       },
 
       setMerchantPortalUrl: (url) => set({ merchantPortalUrl: url }),
+
+      setConcurrent: (id, concurrentActuel) => {
+        set((s) => ({
+          prospects: {
+            ...s.prospects,
+            [id]: { ...(s.prospects[id] ?? makeDefaultState()), concurrentActuel, updatedAt: todayISO() },
+          },
+        }))
+      },
+
+      addAttachmentMeta: (id, kind, nom, type, taille, agent) => {
+        const attachment: Attachment = { id: crypto.randomUUID(), kind, nom, type, taille, agent, createdAt: todayISO() }
+        set((s) => {
+          const existing = s.prospects[id] ?? makeDefaultState()
+          return {
+            prospects: {
+              ...s.prospects,
+              [id]: { ...existing, attachments: [attachment, ...existing.attachments], updatedAt: todayISO() },
+            },
+          }
+        })
+        get().logAudit(id, agent, 'Pièce jointe ajoutée', nom)
+        return attachment.id
+      },
+
+      removeAttachmentMeta: (id, attachmentId) => {
+        set((s) => {
+          const existing = s.prospects[id]
+          if (!existing) return s
+          return {
+            prospects: {
+              ...s.prospects,
+              [id]: { ...existing, attachments: existing.attachments.filter((a) => a.id !== attachmentId) },
+            },
+          }
+        })
+      },
+
+      addSegment: (nom, filtre) => {
+        const id = crypto.randomUUID()
+        const segment: Segment = { id, nom, filtre, createdAt: todayISO() }
+        set((s) => ({ segments: { ...s.segments, [id]: segment } }))
+        return id
+      },
+
+      removeSegment: (id) => {
+        set((s) => {
+          const segments = { ...s.segments }
+          delete segments[id]
+          return { segments }
+        })
+      },
 
       addNote: (id, type, texte, agent) => {
         const note: Note = { id: crypto.randomUUID(), date: todayISO(), type, agent, texte }
@@ -644,6 +751,8 @@ export const useCrmStore = create<CrmStore>()(
           userProfiles: s.userProfiles,
           currentAgent: s.currentAgent,
           orders: s.orders,
+          auditLog: s.auditLog,
+          segments: s.segments,
           exportedAt: todayISO(),
         }
       },
@@ -663,6 +772,8 @@ export const useCrmStore = create<CrmStore>()(
           userProfiles: data.userProfiles ?? makeDefaultUserProfiles(),
           currentAgent: data.currentAgent ?? null,
           orders: data.orders ?? {},
+          auditLog: data.auditLog ?? [],
+          segments: data.segments ?? {},
         })
       },
 
@@ -681,11 +792,13 @@ export const useCrmStore = create<CrmStore>()(
           userProfiles: makeDefaultUserProfiles(),
           currentAgent: null,
           orders: {},
+          auditLog: [],
+          segments: {},
         }),
     }),
     {
       name: 'restau-crm-storage',
-      version: 7,
+      version: 8,
       migrate: (persisted: any) => {
         if (!persisted) return persisted
         const prospects: ProspectMap = persisted.prospects ?? {}
@@ -700,6 +813,8 @@ export const useCrmStore = create<CrmStore>()(
             statutHistory: p.statutHistory ?? [
               { statut: p.statut ?? 'nouveau', date: p.createdAt ?? todayISO(), agent: p.agent || 'Non assigné' },
             ],
+            attachments: p.attachments ?? [],
+            concurrentActuel: p.concurrentActuel ?? '',
           }
         }
         return {
@@ -717,6 +832,8 @@ export const useCrmStore = create<CrmStore>()(
           userProfiles: persisted.userProfiles ?? makeDefaultUserProfiles(),
           currentAgent: persisted.currentAgent ?? null,
           orders: persisted.orders ?? {},
+          auditLog: persisted.auditLog ?? [],
+          segments: persisted.segments ?? {},
         }
       },
     }

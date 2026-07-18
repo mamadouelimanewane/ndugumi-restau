@@ -15,6 +15,8 @@ const links = [
   { to: '/ndugumi', label: 'Suivi NDUGUMi', icon: '📦', end: false },
   { to: '/taches', label: 'Tâches & agenda', icon: '✅', end: false },
   { to: '/rapports', label: 'Rapports', icon: '📈', end: false },
+  { to: '/doublons', label: 'Doublons', icon: '🧬', end: false },
+  { to: '/audit', label: "Journal d'audit", icon: '🕵️', end: false },
   { to: '/agents', label: 'Équipe', icon: '👥', end: false },
 ]
 

@@ -1,8 +1,9 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCrmStore, type CrmBackup } from '../store/useCrmStore'
 import { joinProspects, isLate } from '../utils/joined'
 import { exportAgentPdf } from '../utils/pdf'
 import { exportAgentXlsx } from '../utils/excel'
+import { getPermission, requestNotificationPermission } from '../utils/notifications'
 import { CLIENT_STATUTS, USER_ROLE_LABELS, type UserRole } from '../types'
 
 export default function Agents() {
@@ -27,6 +28,17 @@ export default function Agents() {
   const [newAgent, setNewAgent] = useState('')
   const [portalUrlDraft, setPortalUrlDraft] = useState(merchantPortalUrl)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [notifPermission, setNotifPermission] = useState(getPermission())
+
+  useEffect(() => {
+    setNotifPermission(getPermission())
+  }, [])
+
+  async function handleEnableNotifications() {
+    const result = await requestNotificationPermission()
+    setNotifPermission(result)
+  }
 
   const joined = useMemo(() => joinProspects(restaurants, prospects), [restaurants, prospects])
   const allTasks = useMemo(() => Object.values(tasks), [tasks])
@@ -154,7 +166,9 @@ export default function Agents() {
         <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 0 }}>
           Toutes les données sont stockées uniquement dans ce navigateur (localStorage). Téléchargez une sauvegarde
           régulièrement pour ne rien perdre en cas de vidage du cache, ou pour transférer les données vers un autre
-          poste.
+          poste. Attention : les pièces jointes et notes vocales (photos, documents, audio) sont stockées à part
+          (IndexedDB) et ne sont <strong>pas incluses</strong> dans ce fichier de sauvegarde — elles restent
+          uniquement sur l'appareil qui les a enregistrées.
         </p>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn secondary small" onClick={handleDownloadBackup}>
@@ -171,6 +185,35 @@ export default function Agents() {
             onChange={handleRestoreFile}
           />
         </div>
+      </div>
+
+      <div className="panel">
+        <h3>Rappels du navigateur</h3>
+        <p style={{ fontSize: 12, color: 'var(--text-dim)', marginTop: 0 }}>
+          Affiche une notification du navigateur quand des tâches ou relances sont en retard, tant que l'application
+          reste ouverte (onglet actif ou en arrière-plan). Comme toutes les données restent uniquement sur cet
+          appareil (pas de serveur central), une vraie notification &laquo;&nbsp;push&nbsp;&raquo; quand l'application
+          est complètement fermée n'est pas possible.
+        </p>
+        {notifPermission === 'unsupported' && (
+          <div style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>
+            Les notifications ne sont pas prises en charge par ce navigateur.
+          </div>
+        )}
+        {notifPermission === 'granted' && (
+          <div style={{ fontSize: 12.5, color: 'var(--ok)', fontWeight: 600 }}>✓ Rappels activés</div>
+        )}
+        {notifPermission === 'denied' && (
+          <div style={{ fontSize: 12.5, color: 'var(--danger)' }}>
+            Notifications bloquées — autorisez-les dans les réglages du navigateur pour ce site si vous les
+            souhaitez.
+          </div>
+        )}
+        {notifPermission === 'default' && (
+          <button className="btn secondary small" onClick={handleEnableNotifications}>
+            Activer les rappels
+          </button>
+        )}
       </div>
 
       <div className="panel">

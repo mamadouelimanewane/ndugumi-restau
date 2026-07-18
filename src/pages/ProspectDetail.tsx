@@ -18,6 +18,7 @@ import {
 } from '../types'
 import StatutBadge from '../components/StatutBadge'
 import PhoneQuickActions from '../components/PhoneQuickActions'
+import AttachmentsPanel from '../components/AttachmentsPanel'
 import { isLate, joinProspects } from '../utils/joined'
 import { computeQuartierDensity } from '../utils/priority'
 import { waLinkWithText } from '../utils/phone'
@@ -46,6 +47,7 @@ export default function ProspectDetail() {
   const setTags = useCrmStore((s) => s.setTags)
   const setDeal = useCrmStore((s) => s.setDeal)
   const setNdugumi = useCrmStore((s) => s.setNdugumi)
+  const setConcurrent = useCrmStore((s) => s.setConcurrent)
   const updateRestaurant = useCrmStore((s) => s.updateRestaurant)
   const deleteRestaurant = useCrmStore((s) => s.deleteRestaurant)
   const addContact = useCrmStore((s) => s.addContact)
@@ -542,6 +544,15 @@ export default function ProspectDetail() {
                 onChange={(e) => setRelance(restaurantId, e.target.value || null)}
               />
             </div>
+            <div className="field-row">
+              <label>Concurrence (appli déjà utilisée, le cas échéant)</label>
+              <input
+                type="text"
+                value={crm.concurrentActuel}
+                onChange={(e) => setConcurrent(restaurantId, e.target.value)}
+                placeholder="Ex : Yassir, Glovo, aucune…"
+              />
+            </div>
             <div className="field-row" style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>
               Créé le {new Date(crm.createdAt).toLocaleDateString('fr-FR')} · dernière mise à jour le{' '}
               {new Date(crm.updatedAt).toLocaleDateString('fr-FR')}
@@ -806,6 +817,8 @@ export default function ProspectDetail() {
               </button>
             </div>
           </div>
+
+          <AttachmentsPanel restaurantId={restaurantId} agent={currentAgent || crm.agent || 'Non assigné'} />
 
           <div className="panel">
             <h3>Proposer des produits via WhatsApp</h3>

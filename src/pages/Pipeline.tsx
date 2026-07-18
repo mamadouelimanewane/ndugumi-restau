@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCrmStore } from '../store/useCrmStore'
 import { joinProspects } from '../utils/joined'
@@ -26,6 +26,24 @@ export default function Pipeline() {
     }
   }
 
+  const [draggedId, setDraggedId] = useState<number | null>(null)
+  const [dragOverCol, setDragOverCol] = useState<Statut | null>(null)
+
+  function handleDragStart(e: React.DragEvent, id: number) {
+    setDraggedId(id)
+    e.dataTransfer.setData('text/plain', String(id))
+    e.dataTransfer.effectAllowed = 'move'
+  }
+
+  function handleDrop(e: React.DragEvent, target: Statut) {
+    e.preventDefault()
+    setDragOverCol(null)
+    const idStr = e.dataTransfer.getData('text/plain')
+    const id = idStr ? Number(idStr) : draggedId
+    if (id !== null && !Number.isNaN(id)) setStatut(id, target)
+    setDraggedId(null)
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -37,13 +55,34 @@ export default function Pipeline() {
 
       <div className="kanban">
         {STATUTS.map((s) => (
-          <div className="kanban-col" key={s}>
+          <div
+            className={'kanban-col' + (dragOverCol === s ? ' drag-over' : '')}
+            key={s}
+            onDragOver={(e) => {
+              e.preventDefault()
+              e.dataTransfer.dropEffect = 'move'
+              if (dragOverCol !== s) setDragOverCol(s)
+            }}
+            onDragLeave={() => setDragOverCol((prev) => (prev === s ? null : prev))}
+            onDrop={(e) => handleDrop(e, s)}
+          >
             <div className="kanban-col-header">
               <span style={{ color: STATUT_COLORS[s] }}>{STATUT_LABELS[s]}</span>
               <span>{byStatut[s].length}</span>
             </div>
             {byStatut[s].map((j) => (
-              <div className="kanban-card" key={j.id} onClick={() => navigate(`/prospects/${j.id}`)}>
+              <div
+                className="kanban-card"
+                key={j.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, j.id)}
+                onDragEnd={() => {
+                  setDraggedId(null)
+                  setDragOverCol(null)
+                }}
+                onClick={() => navigate(`/prospects/${j.id}`)}
+                style={{ opacity: draggedId === j.id ? 0.4 : 1, cursor: 'grab' }}
+              >
                 <span className="etab">{j.etablissement}</span>
                 <span className="quartier">{j.quartier}</span>
                 {j.crm.tags.length > 0 && (

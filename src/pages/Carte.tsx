@@ -21,6 +21,7 @@ export default function Carte() {
   const restaurants = useCrmStore((s) => s.restaurants)
   const prospects = useCrmStore((s) => s.prospects)
   const agents = useCrmStore((s) => s.agents)
+  const segments = useCrmStore((s) => s.segments)
   const navigate = useNavigate()
 
   const joined = useMemo(() => joinProspects(restaurants, prospects), [restaurants, prospects])
@@ -30,6 +31,16 @@ export default function Carte() {
   const [statutFilter, setStatutFilter] = useState<Statut | ''>('')
   const [ndugumiFilter, setNdugumiFilter] = useState<'' | 'oui' | 'non'>('')
   const [agentFilter, setAgentFilter] = useState('')
+  const segmentList = useMemo(() => Object.values(segments).sort((a, b) => a.nom.localeCompare(b.nom)), [segments])
+
+  function handleLoadSegment(id: string) {
+    const seg = segments[id]
+    if (!seg) return
+    setZoneFilter(seg.filtre.zone)
+    setQuartierFilter(seg.filtre.quartier)
+    setStatutFilter(seg.filtre.statut)
+    setNdugumiFilter(seg.filtre.ndugumi)
+  }
 
   const quartiers = useMemo(() => {
     const set = new Set(joined.map((j) => j.quartier))
@@ -83,6 +94,16 @@ export default function Carte() {
       </div>
 
       <div className="filters-bar">
+        {segmentList.length > 0 && (
+          <select defaultValue="" onChange={(e) => handleLoadSegment(e.target.value)}>
+            <option value="">Charger un segment…</option>
+            {segmentList.map((seg) => (
+              <option key={seg.id} value={seg.id}>
+                {seg.nom}
+              </option>
+            ))}
+          </select>
+        )}
         <select value={zoneFilter} onChange={(e) => setZoneFilter(e.target.value)}>
           <option value="">Toutes zones</option>
           <option value="Dakar intra-muros">Dakar intra-muros</option>

@@ -162,6 +162,18 @@ export interface StatutHistoryEntry {
   agent: string // agent assigné au moment du changement (proxy — pas d'authentification dans l'outil)
 }
 
+export type AttachmentKind = 'photo' | 'document' | 'audio'
+
+export interface Attachment {
+  id: string // sert aussi de clé pour retrouver le blob dans IndexedDB
+  kind: AttachmentKind
+  nom: string
+  type: string // MIME type
+  taille: number // octets
+  createdAt: string
+  agent: string
+}
+
 export interface ProspectState {
   statut: Statut
   agent: string
@@ -172,6 +184,8 @@ export interface ProspectState {
   deal: DealInfo
   ndugumi: NdugumiInfo
   statutHistory: StatutHistoryEntry[]
+  attachments: Attachment[]
+  concurrentActuel: string // texte libre : appli concurrente déjà utilisée par le restaurant, le cas échéant
   createdAt: string
   updatedAt: string
 }
@@ -288,3 +302,23 @@ export interface Order {
 }
 
 export type OrderMap = Record<string, Order>
+
+export interface AuditEntry {
+  id: string
+  restaurantId: number
+  date: string // ISO
+  agent: string
+  action: string // court libellé de l'action, ex : "Statut changé", "Restaurant supprimé"
+  details: string // ex : "À contacter → Contacté"
+}
+
+export type SegmentFilter = CampaignFilter
+
+export interface Segment {
+  id: string
+  nom: string
+  filtre: SegmentFilter
+  createdAt: string
+}
+
+export type SegmentMap = Record<string, Segment>

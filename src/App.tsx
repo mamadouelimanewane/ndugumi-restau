@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import WhoAreYou from './components/WhoAreYou'
 import GlobalSearch from './components/GlobalSearch'
+import ReminderNotifier from './components/ReminderNotifier'
 import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
 import Prospects from './pages/Prospects'
@@ -17,6 +18,8 @@ import Catalogue from './pages/Catalogue'
 import Communication from './pages/Communication'
 import Marketing from './pages/Marketing'
 import NdugumiSuivi from './pages/NdugumiSuivi'
+import AuditLog from './pages/AuditLog'
+import Doublons from './pages/Doublons'
 import { useCrmStore } from './store/useCrmStore'
 
 export default function App() {
@@ -34,6 +37,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <Sidebar />
+      <ReminderNotifier />
       <main className="main">
         <GlobalSearch />
         <Routes>
@@ -48,6 +52,8 @@ export default function App() {
           <Route path="/communication" element={<Communication />} />
           <Route path="/marketing" element={<Marketing />} />
           <Route path="/ndugumi" element={<NdugumiSuivi />} />
+          <Route path="/doublons" element={<Doublons />} />
+          <Route path="/audit" element={<AuditLog />} />
           <Route path="/taches" element={<Tasks />} />
           <Route path="/rapports" element={<Reports />} />
           <Route path="/agents" element={<Agents />} />

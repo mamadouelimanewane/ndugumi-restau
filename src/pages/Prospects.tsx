@@ -19,6 +19,9 @@ export default function Prospects() {
   const setStatut = useCrmStore((s) => s.setStatut)
   const setAgent = useCrmStore((s) => s.setAgent)
   const addRestaurant = useCrmStore((s) => s.addRestaurant)
+  const segments = useCrmStore((s) => s.segments)
+  const addSegment = useCrmStore((s) => s.addSegment)
+  const removeSegment = useCrmStore((s) => s.removeSegment)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -49,6 +52,40 @@ export default function Prospects() {
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [bulkAgent, setBulkAgent] = useState(agents[0])
   const importInputRef = useRef<HTMLInputElement>(null)
+
+  const segmentList = useMemo(() => Object.values(segments).sort((a, b) => a.nom.localeCompare(b.nom)), [segments])
+  const [selectedSegmentId, setSelectedSegmentId] = useState('')
+  const [newSegmentName, setNewSegmentName] = useState('')
+
+  function handleLoadSegment(id: string) {
+    setSelectedSegmentId(id)
+    const seg = segments[id]
+    if (!seg) return
+    setZoneFilter(seg.filtre.zone)
+    setQuartierFilter(seg.filtre.quartier)
+    setStatutFilter(seg.filtre.statut)
+    setNdugumiFilter(seg.filtre.ndugumi)
+    setTagFilter(seg.filtre.tag)
+  }
+
+  function handleSaveSegment() {
+    const nom = newSegmentName.trim()
+    if (!nom) return
+    addSegment(nom, {
+      zone: zoneFilter as Zone | '',
+      quartier: quartierFilter,
+      statut: statutFilter,
+      ndugumi: ndugumiFilter,
+      tag: tagFilter,
+    })
+    setNewSegmentName('')
+  }
+
+  function handleDeleteSegment() {
+    if (!selectedSegmentId) return
+    removeSegment(selectedSegmentId)
+    setSelectedSegmentId('')
+  }
 
   const quartiers = useMemo(() => {
     const set = new Set(joined.map((j) => j.quartier))
@@ -263,6 +300,32 @@ export default function Prospects() {
           </div>
         </div>
       )}
+
+      <div className="filters-bar">
+        <select value={selectedSegmentId} onChange={(e) => handleLoadSegment(e.target.value)}>
+          <option value="">Charger un segment…</option>
+          {segmentList.map((seg) => (
+            <option key={seg.id} value={seg.id}>
+              {seg.nom}
+            </option>
+          ))}
+        </select>
+        {selectedSegmentId && (
+          <button className="btn secondary small" onClick={handleDeleteSegment}>
+            Supprimer ce segment
+          </button>
+        )}
+        <input
+          type="text"
+          placeholder="Nom du segment à sauvegarder…"
+          value={newSegmentName}
+          onChange={(e) => setNewSegmentName(e.target.value)}
+          style={{ minWidth: 160 }}
+        />
+        <button className="btn secondary small" onClick={handleSaveSegment} disabled={!newSegmentName.trim()}>
+          Sauvegarder les filtres actuels
+        </button>
+      </div>
 
       <div className="filters-bar">
         <input
