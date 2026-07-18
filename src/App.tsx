@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import WhoAreYou from './components/WhoAreYou'
+import GlobalSearch from './components/GlobalSearch'
 import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
 import Prospects from './pages/Prospects'
@@ -34,6 +35,7 @@ export default function App() {
     <div className="app-shell">
       <Sidebar />
       <main className="main">
+        <GlobalSearch />
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/dashboard" element={<Dashboard />} />

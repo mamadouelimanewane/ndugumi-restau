@@ -20,6 +20,7 @@ import StatutBadge from '../components/StatutBadge'
 import PhoneQuickActions from '../components/PhoneQuickActions'
 import { isLate } from '../utils/joined'
 import { waLinkWithText } from '../utils/phone'
+import { exportVisitCardPdf } from '../utils/pdf'
 
 export default function ProspectDetail() {
   const { id } = useParams()
@@ -235,7 +236,12 @@ export default function ProspectDetail() {
             {restaurant.quartier} · {restaurant.zone}
           </p>
         </div>
-        <StatutBadge statut={crm.statut} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button className="btn secondary" onClick={() => exportVisitCardPdf({ ...restaurant, crm })}>
+            Fiche de visite (PDF)
+          </button>
+          <StatutBadge statut={crm.statut} />
+        </div>
       </div>
 
       <div className="detail-grid">

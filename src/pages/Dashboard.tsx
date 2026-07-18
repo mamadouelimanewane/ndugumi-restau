@@ -1,9 +1,18 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCrmStore } from '../store/useCrmStore'
 import { joinProspects, isLate, isToday } from '../utils/joined'
 import { STATUTS, STATUT_LABELS, STATUT_COLORS, CLIENT_STATUTS } from '../types'
 import StatutBadge from '../components/StatutBadge'
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+const STALE_EXCLUDED = ['refuse', 'client_inactif', 'client_actif', 'signe']
+
+/** Dernière interaction connue (dernière note, ou date de création s'il n'y a jamais eu de note). */
+function lastContactMs(j: { crm: { notes: { date: string }[]; createdAt: string } }): number {
+  if (j.crm.notes.length === 0) return new Date(j.crm.createdAt).getTime()
+  return Math.max(...j.crm.notes.map((n) => new Date(n.date).getTime()))
+}
 
 export default function Dashboard() {
   const restaurants = useCrmStore((s) => s.restaurants)
@@ -33,6 +42,16 @@ export default function Dashboard() {
   const taskList = Object.values(tasks)
   const tachesEnRetard = taskList.filter((t) => t.statut === 'a_faire' && isLate(t.dateEcheance))
   const inscritsNdugumi = joined.filter((j) => j.crm.ndugumi.inscrit).length
+
+  const [staleThreshold, setStaleThreshold] = useState(14)
+  const staleProspects = useMemo(() => {
+    const now = Date.now()
+    return joined
+      .filter((j) => !STALE_EXCLUDED.includes(j.crm.statut))
+      .map((j) => ({ j, days: Math.floor((now - lastContactMs(j)) / MS_PER_DAY) }))
+      .filter((x) => x.days >= staleThreshold)
+      .sort((a, b) => b.days - a.days)
+  }, [joined, staleThreshold])
 
   const byZone = useMemo(() => {
     const m: Record<string, number> = {}
@@ -236,6 +255,57 @@ export default function Dashboard() {
           </table>
         </div>
       )}
+
+      <div className="panel">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <h3 style={{ margin: 0 }}>
+            Prospects sans contact depuis {staleThreshold}+ jours ({staleProspects.length})
+          </h3>
+          <select value={staleThreshold} onChange={(e) => setStaleThreshold(Number(e.target.value))}>
+            <option value={7}>7 jours et +</option>
+            <option value={14}>14 jours et +</option>
+            <option value={30}>30 jours et +</option>
+          </select>
+        </div>
+        <p className="page-subtitle" style={{ margin: '6px 0 14px' }}>
+          Basé sur la dernière interaction enregistrée (note) ou la date de création si aucune note n'existe.
+          Signés, clients actifs, refusés et inactifs sont exclus de cette liste.
+        </p>
+        {staleProspects.length > 0 ? (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Établissement</th>
+                <th>Quartier</th>
+                <th>Statut</th>
+                <th>Agent</th>
+                <th>Sans contact depuis</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {staleProspects.slice(0, 30).map(({ j, days }) => (
+                <tr key={j.id}>
+                  <td>{j.etablissement}</td>
+                  <td>{j.quartier}</td>
+                  <td>
+                    <StatutBadge statut={j.crm.statut} />
+                  </td>
+                  <td>{j.crm.agent || 'Non assigné'}</td>
+                  <td style={{ color: 'var(--danger)', fontWeight: 600 }}>{days} jours</td>
+                  <td>
+                    <Link className="btn small secondary" to={`/prospects/${j.id}`}>
+                      Ouvrir
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <div className="empty-state">Aucun prospect sans contact depuis plus de {staleThreshold} jours.</div>
+        )}
+      </div>
 
       <div className="panel">
         <h3>Top quartiers / communes</h3>

@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { STATUT_LABELS, SANTE_LABELS } from '../types'
+import { STATUT_LABELS, SANTE_LABELS, INTERACTION_LABELS } from '../types'
 import type { JoinedProspect } from './joined'
 
 const PRIMARY: [number, number, number] = [122, 31, 31] // #7a1f1f
@@ -138,4 +138,115 @@ export function exportAgentPdf(agent: string, joined: JoinedProspect[]) {
 
   addFooter(doc)
   download(doc, `restau-crm-${agent.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.pdf`)
+}
+
+/** Fiche de visite terrain — une page portrait, consultable ou imprimable avant une visite. */
+export function exportVisitCardPdf(j: JoinedProspect) {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+
+  doc.setFillColor(...PRIMARY)
+  doc.rect(0, 0, pageWidth, 56, 'F')
+  doc.setTextColor(255, 255, 255)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(16)
+  doc.text('Fiche de visite', 28, 26)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(11)
+  doc.text(j.etablissement, 28, 44)
+
+  const dateStr = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })
+  doc.setFontSize(9)
+  doc.text(dateStr, pageWidth - 28, 26, { align: 'right' })
+
+  let y = 78
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: 28, right: 28 },
+    theme: 'plain',
+    styles: { fontSize: 10, cellPadding: 3 },
+    body: [
+      ['Téléphone', j.telephone],
+      ['Quartier', j.quartier],
+      ['Zone', j.zone],
+      ['Statut', STATUT_LABELS[j.crm.statut]],
+      ['Agent assigné', j.crm.agent || 'Non assigné'],
+      ['Prochaine relance', j.crm.prochaineRelance ?? '—'],
+      ['Tags', j.crm.tags.join(', ') || '—'],
+      ['Inscrit NDUGUMi', j.crm.ndugumi.inscrit ? `Oui (${j.crm.ndugumi.identifiant || 'identifiant non renseigné'})` : 'Non'],
+    ],
+    columnStyles: { 0: { fontStyle: 'bold', cellWidth: 140 } },
+  })
+  y = (doc as any).lastAutoTable.finalY + 16
+
+  if (j.crm.contacts.length > 0) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.setTextColor(40, 40, 40)
+    doc.text('Contacts', 28, y)
+    y += 8
+    autoTable(doc, {
+      startY: y,
+      margin: { left: 28, right: 28 },
+      head: [['Nom', 'Fonction', 'Téléphone']],
+      body: j.crm.contacts.map((c) => [c.nom + (c.principal ? ' ★' : ''), c.fonction, c.telephone]),
+      styles: { fontSize: 9.5, cellPadding: 4 },
+      headStyles: { fillColor: PRIMARY, textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: ROW_ALT },
+    })
+    y = (doc as any).lastAutoTable.finalY + 16
+  }
+
+  if (j.crm.deal.volumeEstimeMensuel !== null || j.crm.deal.nombreCommandesMensuel !== null) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.setTextColor(40, 40, 40)
+    doc.text('Compte client', 28, y)
+    y += 8
+    autoTable(doc, {
+      startY: y,
+      margin: { left: 28, right: 28 },
+      theme: 'plain',
+      styles: { fontSize: 10, cellPadding: 3 },
+      body: [
+        ['Commandes / mois', j.crm.deal.nombreCommandesMensuel !== null ? String(j.crm.deal.nombreCommandesMensuel) : '—'],
+        [
+          'Volume mensuel',
+          j.crm.deal.volumeEstimeMensuel !== null ? `${j.crm.deal.volumeEstimeMensuel.toLocaleString('fr-FR')} FCFA` : '—',
+        ],
+        ['Santé du compte', SANTE_LABELS[j.crm.deal.santeCompte]],
+        ['Date de signature', j.crm.deal.dateSignature ?? '—'],
+      ],
+      columnStyles: { 0: { fontStyle: 'bold', cellWidth: 140 } },
+    })
+    y = (doc as any).lastAutoTable.finalY + 16
+  }
+
+  const recentNotes = j.crm.notes.slice(0, 5)
+  if (recentNotes.length > 0) {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11)
+    doc.setTextColor(40, 40, 40)
+    doc.text('Dernières interactions', 28, y)
+    y += 8
+    autoTable(doc, {
+      startY: y,
+      margin: { left: 28, right: 28 },
+      head: [['Date', 'Type', 'Agent', 'Note']],
+      body: recentNotes.map((n) => [
+        new Date(n.date).toLocaleDateString('fr-FR'),
+        INTERACTION_LABELS[n.type],
+        n.agent,
+        n.texte,
+      ]),
+      styles: { fontSize: 9, cellPadding: 4, overflow: 'linebreak' },
+      headStyles: { fillColor: PRIMARY, textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: ROW_ALT },
+      columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 60 }, 2: { cellWidth: 60 }, 3: { cellWidth: 250 } },
+    })
+  }
+
+  addFooter(doc)
+  download(doc, `fiche-visite-${j.etablissement.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().slice(0, 10)}.pdf`)
 }

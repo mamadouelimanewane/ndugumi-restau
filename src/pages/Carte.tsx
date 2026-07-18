@@ -1,14 +1,26 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet'
+import L from 'leaflet'
+import { MapContainer, TileLayer, CircleMarker, Marker, Polyline, Popup } from 'react-leaflet'
 import { useCrmStore } from '../store/useCrmStore'
 import { joinProspects } from '../utils/joined'
 import { jitteredCoords, DAKAR_CENTER } from '../data/quartierCoords'
+import { nearestNeighborRoute, type RouteStop } from '../utils/route'
 import { STATUTS, STATUT_LABELS, STATUT_COLORS, type Statut } from '../types'
+
+function routeNumberIcon(n: number) {
+  return L.divIcon({
+    className: 'route-marker',
+    html: `<div class="route-marker-badge">${n}</div>`,
+    iconSize: [24, 24],
+    iconAnchor: [12, 12],
+  })
+}
 
 export default function Carte() {
   const restaurants = useCrmStore((s) => s.restaurants)
   const prospects = useCrmStore((s) => s.prospects)
+  const agents = useCrmStore((s) => s.agents)
   const navigate = useNavigate()
 
   const joined = useMemo(() => joinProspects(restaurants, prospects), [restaurants, prospects])
@@ -17,6 +29,7 @@ export default function Carte() {
   const [quartierFilter, setQuartierFilter] = useState('')
   const [statutFilter, setStatutFilter] = useState<Statut | ''>('')
   const [ndugumiFilter, setNdugumiFilter] = useState<'' | 'oui' | 'non'>('')
+  const [agentFilter, setAgentFilter] = useState('')
 
   const quartiers = useMemo(() => {
     const set = new Set(joined.map((j) => j.quartier))
@@ -30,9 +43,33 @@ export default function Carte() {
       if (statutFilter && j.crm.statut !== statutFilter) return false
       if (ndugumiFilter === 'oui' && !j.crm.ndugumi.inscrit) return false
       if (ndugumiFilter === 'non' && j.crm.ndugumi.inscrit) return false
+      if (agentFilter && (j.crm.agent || 'Non assigné') !== agentFilter) return false
       return true
     })
-  }, [joined, zoneFilter, quartierFilter, statutFilter, ndugumiFilter])
+  }, [joined, zoneFilter, quartierFilter, statutFilter, ndugumiFilter, agentFilter])
+
+  const [route, setRoute] = useState<RouteStop[] | null>(null)
+
+  useEffect(() => {
+    setRoute(null)
+  }, [zoneFilter, quartierFilter, statutFilter, ndugumiFilter, agentFilter])
+
+  const nameById = useMemo(() => {
+    const m: Record<number, string> = {}
+    for (const j of filtered) m[j.id] = j.etablissement
+    return m
+  }, [filtered])
+
+  function handleComputeRoute() {
+    const points = filtered.map((j) => ({ id: j.id, coords: jitteredCoords(j.quartier, j.id) }))
+    if (points.length === 0) {
+      setRoute(null)
+      return
+    }
+    setRoute(nearestNeighborRoute(points, DAKAR_CENTER))
+  }
+
+  const totalDistanceKm = route ? route.reduce((acc, r) => acc + r.distanceFromPrevKm, 0) : 0
 
   return (
     <div>
@@ -72,7 +109,60 @@ export default function Carte() {
           <option value="oui">Inscrits NDUGUMi</option>
           <option value="non">Non inscrits NDUGUMi</option>
         </select>
+        <select value={agentFilter} onChange={(e) => setAgentFilter(e.target.value)}>
+          <option value="">Tous les agents</option>
+          {agents.map((a) => (
+            <option key={a} value={a}>
+              {a}
+            </option>
+          ))}
+        </select>
+        <button className="btn secondary" onClick={handleComputeRoute}>
+          Calculer l'itinéraire du jour
+        </button>
+        {route && (
+          <button className="btn secondary" onClick={() => setRoute(null)}>
+            Effacer l'itinéraire
+          </button>
+        )}
       </div>
+
+      {route && (
+        <div className="panel">
+          <h3>
+            Itinéraire proposé — {route.length} arrêt{route.length > 1 ? 's' : ''} · ~{totalDistanceKm.toFixed(1)} km au
+            total (à vol d'oiseau)
+          </h3>
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Établissement</th>
+                <th>Distance depuis l'arrêt précédent</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {route.map((r, i) => (
+                <tr key={r.id}>
+                  <td>{i + 1}</td>
+                  <td>{nameById[r.id] ?? '—'}</td>
+                  <td>{r.distanceFromPrevKm.toFixed(1)} km</td>
+                  <td>
+                    <button className="btn small secondary" onClick={() => navigate(`/prospects/${r.id}`)}>
+                      Ouvrir
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 6 }}>
+            Ordre calculé par plus-proche-voisin depuis le centre de Dakar, à partir des positions approximatives par
+            quartier — une aide à la planification, pas un GPS précis.
+          </div>
+        </div>
+      )}
 
       <div className="panel" style={{ padding: 8 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 8, fontSize: 11.5 }}>
@@ -102,7 +192,29 @@ export default function Carte() {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {filtered.map((j) => {
+            {route && (
+              <Polyline
+                positions={[DAKAR_CENTER, ...route.map((r) => r.coords)]}
+                pathOptions={{ color: '#c0793a', weight: 3, dashArray: '6 6' }}
+              />
+            )}
+            {route &&
+              route.map((r, i) => (
+                <Marker key={`route-${r.id}`} position={r.coords} icon={routeNumberIcon(i + 1)}>
+                  <Popup>
+                    <div style={{ minWidth: 160 }}>
+                      <strong>
+                        {i + 1}. {nameById[r.id] ?? '—'}
+                      </strong>
+                      <div style={{ fontSize: 12, margin: '4px 0' }}>{r.distanceFromPrevKm.toFixed(1)} km depuis l'arrêt précédent</div>
+                      <button className="btn small" onClick={() => navigate(`/prospects/${r.id}`)}>
+                        Voir la fiche
+                      </button>
+                    </div>
+                  </Popup>
+                </Marker>
+              ))}
+            {!route && filtered.map((j) => {
               const [lat, lng] = jitteredCoords(j.quartier, j.id)
               return (
                 <CircleMarker

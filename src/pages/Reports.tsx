@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useCrmStore } from '../store/useCrmStore'
 import { joinProspects } from '../utils/joined'
+import { startOfMonth } from '../utils/calendar'
 import { exportProspectsCsv } from '../utils/csv'
 import { exportProspectsPdf, exportClientsPdf } from '../utils/pdf'
 import { exportProspectsXlsx, exportClientsXlsx } from '../utils/excel'
@@ -17,11 +18,69 @@ function formatFcfa(n: number): string {
   return n.toLocaleString('fr-FR') + ' FCFA'
 }
 
+function inRange(iso: string, start: Date, end: Date): boolean {
+  const t = new Date(iso).getTime()
+  return t >= start.getTime() && t < end.getTime()
+}
+
+function formatDelta(current: number, previous: number): { text: string; color: string } {
+  const diff = current - previous
+  if (previous === 0) {
+    if (diff === 0) return { text: '=', color: 'var(--text-dim)' }
+    return { text: `+${diff}`, color: 'var(--ok)' }
+  }
+  const pct = Math.round((diff / previous) * 100)
+  const sign = diff > 0 ? '+' : ''
+  const color = diff > 0 ? 'var(--ok)' : diff < 0 ? 'var(--danger)' : 'var(--text-dim)'
+  return { text: `${sign}${diff} (${sign}${pct}%)`, color }
+}
+
 export default function Reports() {
   const restaurants = useCrmStore((s) => s.restaurants)
   const prospects = useCrmStore((s) => s.prospects)
+  const tasks = useCrmStore((s) => s.tasks)
 
   const joined = useMemo(() => joinProspects(restaurants, prospects), [restaurants, prospects])
+
+  const monthlyComparison = useMemo(() => {
+    const now = new Date()
+    const currentStart = startOfMonth(now)
+    const prevStart = new Date(currentStart.getFullYear(), currentStart.getMonth() - 1, 1)
+
+    function computeFor(start: Date, end: Date) {
+      let newProspects = 0
+      let newSignings = 0
+      let interactions = 0
+      let tasksCreated = 0
+      for (const j of joined) {
+        if (inRange(j.crm.createdAt, start, end)) newProspects++
+        for (const h of j.crm.statutHistory) {
+          if (h.statut === 'signe' && inRange(h.date, start, end)) newSignings++
+        }
+        for (const n of j.crm.notes) {
+          if (inRange(n.date, start, end)) interactions++
+        }
+      }
+      for (const t of Object.values(tasks)) {
+        if (inRange(t.createdAt, start, end)) tasksCreated++
+      }
+      return { newProspects, newSignings, interactions, tasksCreated }
+    }
+
+    return {
+      current: computeFor(currentStart, now),
+      previous: computeFor(prevStart, currentStart),
+      currentLabel: now.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
+      previousLabel: prevStart.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }),
+    }
+  }, [joined, tasks])
+
+  const COMPARISON_ROWS: { key: 'newProspects' | 'newSignings' | 'interactions' | 'tasksCreated'; label: string }[] = [
+    { key: 'newProspects', label: 'Nouveaux prospects ajoutés' },
+    { key: 'newSignings', label: 'Nouvelles signatures' },
+    { key: 'interactions', label: 'Interactions enregistrées' },
+    { key: 'tasksCreated', label: 'Tâches créées' },
+  ]
 
   const clients = useMemo(
     () => joined.filter((j) => CLIENT_STATUTS.includes(j.crm.statut) && j.crm.statut !== 'client_inactif'),
@@ -97,6 +156,38 @@ export default function Reports() {
           <div className="kpi-value">{clientsActifsNdugumi}</div>
           <div className="kpi-label">Clients utilisant activement l'appli</div>
         </div>
+      </div>
+
+      <div className="panel">
+        <h3>Comparaison mensuelle</h3>
+        <p className="page-subtitle" style={{ margin: '0 0 14px' }}>
+          {monthlyComparison.currentLabel} (depuis le 1er, à ce jour) vs {monthlyComparison.previousLabel} (mois complet)
+        </p>
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Indicateur</th>
+              <th>{monthlyComparison.previousLabel}</th>
+              <th>{monthlyComparison.currentLabel} (à ce jour)</th>
+              <th>Évolution</th>
+            </tr>
+          </thead>
+          <tbody>
+            {COMPARISON_ROWS.map(({ key, label }) => {
+              const current = monthlyComparison.current[key]
+              const previous = monthlyComparison.previous[key]
+              const delta = formatDelta(current, previous)
+              return (
+                <tr key={key}>
+                  <td>{label}</td>
+                  <td>{previous}</td>
+                  <td>{current}</td>
+                  <td style={{ color: delta.color, fontWeight: 600 }}>{delta.text}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
 
       <div className="panel">
