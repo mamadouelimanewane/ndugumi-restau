@@ -7,6 +7,7 @@ import { exportProspectsPdf } from '../utils/pdf'
 import { exportProspectsXlsx } from '../utils/excel'
 import { computeQuartierDensity, priorityScore } from '../utils/priority'
 import { parseRestaurantsFile } from '../utils/importRestaurants'
+import { fetchAiMessage } from '../utils/ai'
 import { STATUTS, STATUT_LABELS, type Statut, type Zone } from '../types'
 
 type SortKey = '' | 'score' | 'statut' | 'quartier' | 'relance'
@@ -22,6 +23,8 @@ export default function Prospects() {
   const segments = useCrmStore((s) => s.segments)
   const addSegment = useCrmStore((s) => s.addSegment)
   const removeSegment = useCrmStore((s) => s.removeSegment)
+  const addNote = useCrmStore((s) => s.addNote)
+  const currentAgent = useCrmStore((s) => s.currentAgent)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -52,6 +55,11 @@ export default function Prospects() {
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [bulkAgent, setBulkAgent] = useState(agents[0])
   const importInputRef = useRef<HTMLInputElement>(null)
+
+  const [showBulkAiModal, setShowBulkAiModal] = useState(false)
+  const [aiObjectif, setAiObjectif] = useState('')
+  const [isGenerating, setIsGenerating] = useState(false)
+  const [generatedMessages, setGeneratedMessages] = useState<Record<number, string>>({})
 
   const segmentList = useMemo(() => Object.values(segments).sort((a, b) => a.nom.localeCompare(b.nom)), [segments])
   const [selectedSegmentId, setSelectedSegmentId] = useState('')
@@ -161,6 +169,52 @@ export default function Prospects() {
     setSelected(new Set())
   }
 
+  async function handleGenerateAi() {
+    if (!aiObjectif.trim()) {
+      alert("Veuillez définir un objectif (ex: 'Inviter à commander')")
+      return
+    }
+    setIsGenerating(true)
+    const newMessages = { ...generatedMessages }
+    
+    for (const id of selected) {
+      const prospect = joined.find(j => j.id === id)
+      if (!prospect) continue
+      
+      try {
+        const recentNotes = prospect.crm.notes.slice(0, 3).map(n => ({ date: n.date, texte: n.texte }))
+        const res = await fetchAiMessage({
+          etablissement: prospect.etablissement,
+          quartier: prospect.quartier,
+          statut: prospect.crm.statut,
+          tags: prospect.crm.tags,
+          canal: 'whatsapp',
+          objectif: aiObjectif,
+          recentNotes
+        })
+        newMessages[id] = res.corps
+        setGeneratedMessages({ ...newMessages })
+      } catch (err) {
+        newMessages[id] = "[Erreur de génération IA]"
+        setGeneratedMessages({ ...newMessages })
+      }
+    }
+    setIsGenerating(false)
+  }
+
+  function handleSaveDrafts() {
+    for (const id of selected) {
+      const msg = generatedMessages[id]
+      if (msg && msg !== "[Erreur de génération IA]") {
+        addNote(id, 'whatsapp', `[Brouillon IA] ${msg}`, currentAgent || 'Système')
+      }
+    }
+    setShowBulkAiModal(false)
+    setSelected(new Set())
+    setGeneratedMessages({})
+    alert("Brouillons enregistrés avec succès dans l'historique des prospects.")
+  }
+
   function handleAddRestaurant() {
     if (!newNom.trim() || !newQuartier.trim()) return
     const id = addRestaurant({
@@ -262,6 +316,9 @@ export default function Prospects() {
           </select>
           <button className="btn small" onClick={handleBulkAssign}>
             Assigner
+          </button>
+          <button className="btn secondary small" onClick={() => setShowBulkAiModal(true)}>
+            🪄 Générer messages IA
           </button>
           <button className="btn secondary small" onClick={() => setSelected(new Set())}>
             Annuler la sélection
@@ -494,6 +551,69 @@ export default function Prospects() {
           </tbody>
         </table>
       </div>
+
+      {showBulkAiModal && (
+        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 20 }}>
+          <div className="panel" style={{ width: '100%', maxWidth: 800, maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <h2>🪄 Génération IA en masse</h2>
+            <p>Générer un message personnalisé pour {selected.size} restaurant(s).</p>
+            
+            <div className="field-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+              <label>Objectif de la campagne</label>
+              <input 
+                type="text" 
+                value={aiObjectif} 
+                onChange={e => setAiObjectif(e.target.value)} 
+                placeholder="Ex: Proposer 10% de réduction pour leur première commande de riz" 
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button className="btn" onClick={handleGenerateAi} disabled={isGenerating || !aiObjectif.trim()}>
+                {isGenerating ? 'Génération en cours...' : 'Lancer la génération'}
+              </button>
+              <button className="btn secondary" onClick={() => setShowBulkAiModal(false)}>Annuler</button>
+            </div>
+
+            {Object.keys(generatedMessages).length > 0 && (
+              <div style={{ marginTop: 16 }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Établissement</th>
+                      <th>Message généré</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.from(selected).map(id => {
+                      const prospect = joined.find(j => j.id === id)
+                      if (!prospect) return null
+                      return (
+                        <tr key={id}>
+                          <td style={{ width: 150 }}>{prospect.etablissement}</td>
+                          <td>
+                            <textarea 
+                              style={{ width: '100%', minHeight: 80, padding: 8, fontFamily: 'inherit', resize: 'vertical' }}
+                              value={generatedMessages[id] || ''}
+                              onChange={e => setGeneratedMessages(prev => ({ ...prev, [id]: e.target.value }))}
+                              placeholder={isGenerating && !generatedMessages[id] ? 'Génération...' : ''}
+                            />
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+                <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+                  <button className="btn primary" onClick={handleSaveDrafts} disabled={isGenerating}>
+                    Enregistrer comme brouillons
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

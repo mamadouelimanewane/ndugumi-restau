@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState, useRef } from 'react'
+import { useSearchParams, Link } from 'react-router-dom'
 import { useCrmStore } from '../store/useCrmStore'
 import { joinProspects } from '../utils/joined'
 import { waLinkWithText } from '../utils/phone'
@@ -13,6 +13,7 @@ import {
   type Canal,
   type MessageTemplate,
 } from '../types'
+import { extractActivities, type ActivityEvent, type NoteActivity, type CampaignSendActivity } from '../utils/activity'
 
 function emptyTemplateDraft(): Omit<MessageTemplate, 'id' | 'createdAt'> {
   return { nom: '', canal: 'whatsapp', sujet: '', corps: '' }
@@ -30,6 +31,7 @@ export default function Communication() {
   const removeTemplate = useCrmStore((s) => s.removeTemplate)
   const addNote = useCrmStore((s) => s.addNote)
   const logCampaignSend = useCrmStore((s) => s.logCampaignSend)
+  const campaignSends = useCrmStore((s) => s.campaignSends)
 
   const [searchParams] = useSearchParams()
   const campaignId = searchParams.get('campaignId')
@@ -41,6 +43,22 @@ export default function Communication() {
   const [templateDraft, setTemplateDraft] = useState(emptyTemplateDraft())
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null)
 
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const [testRestaurantId, setTestRestaurantId] = useState<string>('')
+
+  function insertPlaceholder(placeholder: string) {
+    const el = textareaRef.current
+    if (!el) return
+    const start = el.selectionStart
+    const end = el.selectionEnd
+    const newVal = templateDraft.corps.slice(0, start) + placeholder + templateDraft.corps.slice(end)
+    setTemplateDraft({ ...templateDraft, corps: newVal })
+    setTimeout(() => {
+      el.focus()
+      el.setSelectionRange(start + placeholder.length, start + placeholder.length)
+    }, 0)
+  }
+
   const [zoneFilter, setZoneFilter] = useState('')
   const [quartierFilter, setQuartierFilter] = useState('')
   const [statutFilter, setStatutFilter] = useState<Statut | ''>('')
@@ -48,6 +66,38 @@ export default function Communication() {
   const [canalFilter, setCanalFilter] = useState<Canal>('whatsapp')
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [sendingAgent, setSendingAgent] = useState(currentAgent || agents[0])
+
+  const [activeTab, setActiveTab] = useState<'modeles' | 'scripts' | 'history'>('modeles')
+  const [openScript, setOpenScript] = useState<string | null>(null)
+
+  // Filters for History Tab
+  const [historyCanalFilter, setHistoryCanalFilter] = useState<'tous' | 'whatsapp' | 'email'>('tous')
+  const [historyAgentFilter, setHistoryAgentFilter] = useState('')
+  const [historyPeriodeFilter, setHistoryPeriodeFilter] = useState<'7' | '30' | 'tout'>('30')
+
+  const rawActivities = useMemo(() => {
+    if (activeTab !== 'history') return []
+    const limit = historyPeriodeFilter === '7' ? 7 : historyPeriodeFilter === '30' ? 30 : 99999
+    return extractActivities(restaurants, prospects, campaigns, campaignSends, limit)
+  }, [activeTab, restaurants, prospects, campaigns, campaignSends, historyPeriodeFilter])
+
+  const filteredHistory = useMemo(() => {
+    return rawActivities.filter((a) => {
+      // Keep only campaign_send or note with type whatsapp/email
+      if (a.type !== 'campaign_send' && !(a.type === 'note' && (a.noteType === 'whatsapp' || a.noteType === 'email'))) {
+        return false
+      }
+
+      // Canal filter
+      const canal = a.type === 'campaign_send' ? (a as CampaignSendActivity).canal : (a as NoteActivity).noteType
+      if (historyCanalFilter !== 'tous' && canal !== historyCanalFilter) return false
+
+      // Agent filter
+      if (historyAgentFilter && a.agent !== historyAgentFilter) return false
+
+      return true
+    })
+  }, [rawActivities, historyCanalFilter, historyAgentFilter])
 
   useEffect(() => {
     if (!campaign) return
@@ -153,27 +203,74 @@ export default function Communication() {
     if (campaignId) logCampaignSend(campaignId, j.id, 'email')
   }
 
+  function handleExportCSV() {
+    const header = ['Établissement', 'Quartier', 'Zone', 'Téléphone', 'Statut', 'Agent', 'NDUGUMi', 'Tags']
+    const rows = filtered.map((j) => [
+      j.etablissement,
+      j.quartier,
+      j.zone,
+      j.telephone,
+      STATUT_LABELS[j.crm.statut] || j.crm.statut,
+      j.crm.agent || '',
+      j.crm.ndugumi.inscrit ? 'Oui' : 'Non',
+      j.crm.tags.join(', ')
+    ])
+
+    const csvContent = [
+      header.join(','),
+      ...rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.setAttribute('download', 'contacts_ndugumi.csv')
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   return (
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">Communication</h1>
-          <p className="page-subtitle">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <h1 className="page-title">Communication</h1>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className={`btn ${activeTab === 'modeles' ? '' : 'secondary'}`} onClick={() => setActiveTab('modeles')}>
+                Modèles WhatsApp/Email
+              </button>
+              <button className={`btn ${activeTab === 'scripts' ? '' : 'secondary'}`} onClick={() => setActiveTab('scripts')}>
+                Scripts d'appel
+              </button>
+              <button className={`btn ${activeTab === 'history' ? '' : 'secondary'}`} onClick={() => setActiveTab('history')}>
+                Historique des envois
+              </button>
+            </div>
+          </div>
+          <p className="page-subtitle" style={{ marginTop: 8 }}>
             {campaign ? (
               <>
                 Envoi pour la campagne <strong>{campaign.nom}</strong>
               </>
-            ) : (
+            ) : activeTab === 'modeles' ? (
               'Modèles de message et envoi WhatsApp / Email vers les restaurants'
+            ) : activeTab === 'scripts' ? (
+              'Scripts conversationnels pour les appels terrain'
+            ) : (
+              'Historique de vos envois de campagnes et messages individuels'
             )}
           </p>
         </div>
-        <button className="btn" onClick={() => setShowTemplateForm((v) => !v)}>
-          {showTemplateForm ? 'Fermer' : '+ Nouveau modèle'}
-        </button>
+        {activeTab === 'modeles' && (
+          <button className="btn" onClick={() => setShowTemplateForm((v) => !v)}>
+            {showTemplateForm ? 'Fermer' : '+ Nouveau modèle'}
+          </button>
+        )}
       </div>
 
-      {showTemplateForm && (
+      {activeTab === 'modeles' && showTemplateForm && (
         <div className="panel">
           <h3>{editingTemplateId ? 'Modifier le modèle' : 'Nouveau modèle'}</h3>
           <div className="field-row">
@@ -208,11 +305,60 @@ export default function Communication() {
           )}
           <div className="field-row">
             <label>Message (placeholders : {'{etablissement}'} {'{quartier}'} {'{telephone}'} {'{agent}'})</label>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+              {['{etablissement}', '{quartier}', '{telephone}', '{agent}'].map((p) => (
+                <button key={p} className="btn secondary small" onClick={() => insertPlaceholder(p)}>
+                  [{p}]
+                </button>
+              ))}
+            </div>
             <textarea
+              ref={textareaRef}
               value={templateDraft.corps}
               onChange={(e) => setTemplateDraft({ ...templateDraft, corps: e.target.value })}
               style={{ minHeight: 100 }}
             />
+            <div
+              style={{
+                fontSize: 12,
+                marginTop: 4,
+                color: templateDraft.canal === 'whatsapp' && templateDraft.corps.length > 1000 ? 'var(--danger)' : 'var(--text-dim)',
+              }}
+            >
+              {templateDraft.corps.length} / 1000 caractères
+            </div>
+          </div>
+          <div className="field-row">
+            <label>Aperçu du message</label>
+            <select
+              value={testRestaurantId}
+              onChange={(e) => setTestRestaurantId(e.target.value)}
+              style={{ marginBottom: 8 }}
+            >
+              <option value="">Sélectionnez un restaurant pour tester...</option>
+              {joined.map((j) => (
+                <option key={j.id} value={j.id}>
+                  {j.etablissement} ({j.quartier})
+                </option>
+              ))}
+            </select>
+            <div
+              style={{
+                backgroundColor: '#e7ffd7',
+                borderRadius: 12,
+                padding: 12,
+                fontSize: 13,
+                whiteSpace: 'pre-wrap',
+                maxWidth: 400,
+              }}
+            >
+              {testRestaurantId && joined.find((j) => j.id === Number(testRestaurantId))
+                ? mergeTemplate(templateDraft.corps, joined.find((j) => j.id === Number(testRestaurantId))!, { agent: sendingAgent })
+                : templateDraft.corps}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>
+              Envoyé par {sendingAgent}
+            </div>
           </div>
           <button className="btn" onClick={handleSaveTemplate}>
             Enregistrer le modèle
@@ -220,8 +366,10 @@ export default function Communication() {
         </div>
       )}
 
-      <div className="panel">
-        <h3>Modèles disponibles</h3>
+      {activeTab === 'modeles' && (
+        <>
+          <div className="panel">
+            <h3>Modèles disponibles</h3>
         <table className="data-table">
           <thead>
             <tr>
@@ -283,38 +431,43 @@ export default function Communication() {
             ))}
           </select>
         </div>
-        <div className="filters-bar">
-          <select value={zoneFilter} onChange={(e) => setZoneFilter(e.target.value)}>
-            <option value="">Toutes zones</option>
-            <option value="Dakar intra-muros">Dakar intra-muros</option>
-            <option value="Banlieue">Banlieue</option>
-          </select>
-          <select value={quartierFilter} onChange={(e) => setQuartierFilter(e.target.value)}>
-            <option value="">Tous quartiers</option>
-            {quartiers.map((q) => (
-              <option key={q} value={q}>
-                {q}
-              </option>
-            ))}
-          </select>
-          <select value={statutFilter} onChange={(e) => setStatutFilter(e.target.value as Statut | '')}>
-            <option value="">Tous statuts</option>
-            {STATUTS.map((s) => (
-              <option key={s} value={s}>
-                {STATUT_LABELS[s]}
-              </option>
-            ))}
-          </select>
-          {allTags.length > 0 && (
-            <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
-              <option value="">Tous tags</option>
-              {allTags.map((t) => (
-                <option key={t} value={t}>
-                  {t}
+        <div className="filters-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <select value={zoneFilter} onChange={(e) => setZoneFilter(e.target.value)}>
+              <option value="">Toutes zones</option>
+              <option value="Dakar intra-muros">Dakar intra-muros</option>
+              <option value="Banlieue">Banlieue</option>
+            </select>
+            <select value={quartierFilter} onChange={(e) => setQuartierFilter(e.target.value)}>
+              <option value="">Tous quartiers</option>
+              {quartiers.map((q) => (
+                <option key={q} value={q}>
+                  {q}
                 </option>
               ))}
             </select>
-          )}
+            <select value={statutFilter} onChange={(e) => setStatutFilter(e.target.value as Statut | '')}>
+              <option value="">Tous statuts</option>
+              {STATUTS.map((s) => (
+                <option key={s} value={s}>
+                  {STATUT_LABELS[s]}
+                </option>
+              ))}
+            </select>
+            {allTags.length > 0 && (
+              <select value={tagFilter} onChange={(e) => setTagFilter(e.target.value)}>
+                <option value="">Tous tags</option>
+                {allTags.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+          <button className="btn secondary" onClick={handleExportCSV}>
+            Exporter contacts CSV
+          </button>
         </div>
 
         {selectedTemplate && (
@@ -378,7 +531,255 @@ export default function Communication() {
             Affichage limité aux 100 premiers résultats — affinez les filtres pour cibler plus précisément.
           </div>
         )}
-      </div>
+        </div>
+        </>
+      )}
+
+      {activeTab === 'scripts' && (
+        <div className="panel">
+          <h3>Scripts d'appel</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 }}>
+            <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+              <div 
+                style={{ padding: 12, backgroundColor: 'var(--panel)', cursor: 'pointer', fontWeight: 500, display: 'flex', justifyContent: 'space-between' }}
+                onClick={() => setOpenScript(openScript === 'script1' ? null : 'script1')}
+              >
+                Script 1 — Premier appel (prospection froide)
+                <span>{openScript === 'script1' ? '▲' : '▼'}</span>
+              </div>
+              {openScript === 'script1' && (
+                <div style={{ backgroundColor: '#faf7f2', borderLeft: '3px solid var(--accent)', padding: 14, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                  <strong>Objectif : Qualifier en moins de 3 minutes</strong>
+                  <br /><br />
+                  <strong>[INTRODUCTION — 30 secondes]</strong>
+                  <br />
+                  « Bonjour, je suis [Prénom] de NDUGUMi. Est-ce que je parle bien au responsable ou au propriétaire ?<br />
+                  — Oui : parfait ! / — Non : puis-je lui parler s'il vous plaît ? »
+                  <br /><br />
+                  <span style={{ color: 'var(--accent)', fontStyle: 'italic' }}>En wolof : « Mangi dem ak NDUGUMi — yow mooy borom bi ? »</span>
+                  <br /><br />
+                  <strong>[ACCROCHE — 30 secondes]</strong>
+                  <br />
+                  « Nous travaillons avec des restaurants comme le vôtre à [Quartier] pour qu'ils puissent commander leur marché — riz, huile, légumes, poisson — directement depuis leur téléphone, avec livraison incluse dans le prix. »
+                  <br /><br />
+                  <span style={{ color: 'var(--accent)', fontStyle: 'italic' }}>En wolof : « Dañu def application bi ngir restaurants yi dëkk si te jënd nañu yaakaar si xel yi ak livraisoni ci biir prix bi. »</span>
+                  <br /><br />
+                  <strong>[QUESTION CLÉS — 1 minute]</strong>
+                  <br />
+                  • « Comment vous approvisionnez-vous en ce moment ? » → écouter attentivement<br />
+                  • « C'est quoi votre plus grande difficulté dans vos achats de marché ? »<br />
+                  • « Vous êtes à l'aise avec WhatsApp ? »
+                  <br /><br />
+                  <strong>[CLOSING]</strong>
+                  <br />
+                  • Si intéressé : « Je peux passer vous voir demain entre 14h et 16h pour une démo de 10 minutes ? »<br />
+                  • Si hésitant : « Puis-je vous envoyer quelques infos sur WhatsApp ? »<br />
+                  • Si refus : « Pas de problème. Si ça change, nous sommes joignables sur [numéro]. Bonne journée ! »
+                </div>
+              )}
+            </div>
+
+            <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+              <div 
+                style={{ padding: 12, backgroundColor: 'var(--panel)', cursor: 'pointer', fontWeight: 500, display: 'flex', justifyContent: 'space-between' }}
+                onClick={() => setOpenScript(openScript === 'script2' ? null : 'script2')}
+              >
+                Script 2 — Relance après visite sans inscription
+                <span>{openScript === 'script2' ? '▲' : '▼'}</span>
+              </div>
+              {openScript === 'script2' && (
+                <div style={{ backgroundColor: '#faf7f2', borderLeft: '3px solid var(--accent)', padding: 14, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                  <strong>Objectif : Convertir un prospect intéressé</strong>
+                  <br /><br />
+                  <strong>[RAPPEL]</strong>
+                  <br />
+                  « Bonjour [Prénom], c'est [Agent] de NDUGUMi. Je suis passé vous voir [jour] pour vous présenter notre service. »
+                  <br /><br />
+                  <span style={{ color: 'var(--accent)', fontStyle: 'italic' }}>En wolof : « Bonjour, mangi wax [Agent], dém dem ko wax NDUGUMi. »</span>
+                  <br /><br />
+                  <strong>[RAPPEL DE LA VALEUR]</strong>
+                  <br />
+                  « Vous m'aviez dit que [rappeler le problème mentionné : temps perdu / prix instables / transport…]. C'est exactement ce que NDUGUMi résout. »
+                  <br /><br />
+                  <strong>[QUESTION DIRECTE]</strong>
+                  <br />
+                  « Est-ce que vous avez eu l'occasion de réfléchir à notre proposition ? »
+                  <br /><br />
+                  <strong>[OBJECTION FRÉQUENTE]</strong>
+                  <br />
+                  • Prix → « Le prix de livraison est inclus. Calculez ce que vous dépensez en transport en ce moment. »<br />
+                  • Habitudes → « Commencez juste avec l'huile et le riz ce mois-ci. »<br />
+                  • Pas le temps → « Je peux passer 5 minutes maintenant pour vous inscrire sur place. »
+                  <br /><br />
+                  <strong>[CLOSING]</strong>
+                  <br />
+                  « On peut le faire maintenant par téléphone — je guide étape par étape. »
+                </div>
+              )}
+            </div>
+
+            <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+              <div 
+                style={{ padding: 12, backgroundColor: 'var(--panel)', cursor: 'pointer', fontWeight: 500, display: 'flex', justifyContent: 'space-between' }}
+                onClick={() => setOpenScript(openScript === 'script3' ? null : 'script3')}
+              >
+                Script 3 — Réactivation client inactif
+                <span>{openScript === 'script3' ? '▲' : '▼'}</span>
+              </div>
+              {openScript === 'script3' && (
+                <div style={{ backgroundColor: '#faf7f2', borderLeft: '3px solid var(--accent)', padding: 14, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                  <strong>Objectif : Comprendre le frein et relancer</strong>
+                  <br /><br />
+                  <strong>[OUVERTURE DOUCE]</strong>
+                  <br />
+                  « Bonjour [Prénom], c'est [Agent] de NDUGUMi. Je voulais prendre de vos nouvelles — on ne vous a pas vu commander depuis un moment. »
+                  <br /><br />
+                  <strong>[QUESTION DIAGNOSTIC]</strong>
+                  <br />
+                  « Est-ce qu'il y a eu un problème avec une livraison, ou est-ce que vous avez trouvé autre chose ? » → écouter sans défendre
+                  <br /><br />
+                  Causes fréquentes et réponses :<br />
+                  • Retard livraison : « Je transmets à notre équipe. On va améliorer ça. »<br />
+                  • Prix trop élevé : « Quels produits vous posent problème ? Je regarde ce qu'on peut faire. »<br />
+                  • Retour fournisseur habituel : « Et si on vous gardait comme client NDUGUMi juste pour les urgences ? »<br />
+                  • Oublié : « On va vous envoyer un rappel WhatsApp chaque semaine — vous voulez essayer ? »
+                  <br /><br />
+                  <strong>[CLOSING]</strong>
+                  <br />
+                  « Qu'est-ce qu'il faudrait pour que vous recommandiez une commande cette semaine ? »
+                </div>
+              )}
+            </div>
+
+            <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+              <div 
+                style={{ padding: 12, backgroundColor: 'var(--panel)', cursor: 'pointer', fontWeight: 500, display: 'flex', justifyContent: 'space-between' }}
+                onClick={() => setOpenScript(openScript === 'script4' ? null : 'script4')}
+              >
+                Script 4 — Demande de recommandation (parrainage)
+                <span>{openScript === 'script4' ? '▲' : '▼'}</span>
+              </div>
+              {openScript === 'script4' && (
+                <div style={{ backgroundColor: '#faf7f2', borderLeft: '3px solid var(--accent)', padding: 14, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                  <strong>Objectif : Obtenir des recommandations de clients satisfaits</strong>
+                  <br /><br />
+                  <strong>[CONTEXTE]</strong>
+                  <br />
+                  « Bonjour [Prénom], vous utilisez NDUGUMi depuis [X mois] et ça se passe bien, merci de nous faire confiance ! »
+                  <br /><br />
+                  <strong>[DEMANDE DIRECTE]</strong>
+                  <br />
+                  « Est-ce que vous connaissez d'autres restaurants autour de vous qui pourraient être intéressés ? Même dans un autre quartier ? »
+                  <br /><br />
+                  <span style={{ color: 'var(--accent)', fontStyle: 'italic' }}>En wolof : « Dafa am restaurant yépp ci kanam bi wëy ndagam di jënd ci NDUGUMi ? »</span>
+                  <br /><br />
+                  <strong>[SI OUI]</strong>
+                  <br />
+                  « Super ! Vous pouvez me donner son numéro, ou bien je peux vous donner notre numéro à lui transmettre directement ? »
+                  <br /><br />
+                  <strong>[INCENTIVE si applicable]</strong>
+                  <br />
+                  « Chaque restaurant que vous nous recommandez et qui passe sa première commande, [mentionner l'éventuelle récompense si existante]. »
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'history' && (
+        <div className="panel">
+          <h3>Historique des envois</h3>
+          <div className="filters-bar">
+            <select value={historyCanalFilter} onChange={(e) => setHistoryCanalFilter(e.target.value as any)}>
+              <option value="tous">Tous les canaux</option>
+              <option value="whatsapp">WhatsApp uniquement</option>
+              <option value="email">Email uniquement</option>
+            </select>
+            <select value={historyAgentFilter} onChange={(e) => setHistoryAgentFilter(e.target.value)}>
+              <option value="">Tous les agents</option>
+              {agents.map((a) => (
+                <option key={a} value={a}>
+                  {a}
+                </option>
+              ))}
+            </select>
+            <select value={historyPeriodeFilter} onChange={(e) => setHistoryPeriodeFilter(e.target.value as any)}>
+              <option value="7">7 derniers jours</option>
+              <option value="30">30 derniers jours</option>
+              <option value="tout">Tout l'historique</option>
+            </select>
+          </div>
+
+          <table className="data-table" style={{ marginTop: 16 }}>
+            <thead>
+              <tr>
+                <th>Date & Heure</th>
+                <th>Canal</th>
+                <th>Établissement</th>
+                <th>Agent</th>
+                <th>Type d'envoi</th>
+                <th>Message</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredHistory.map((a) => {
+                const dateObj = new Date(a.date)
+                const dateFormatted = dateObj.toLocaleDateString('fr-FR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })
+
+                const isCampaign = a.type === 'campaign_send'
+                const canalStr = isCampaign ? (a as CampaignSendActivity).canal : (a as NoteActivity).noteType
+                const isWa = canalStr === 'whatsapp'
+
+                return (
+                  <tr key={a.id}>
+                    <td style={{ whiteSpace: 'nowrap' }}>{dateFormatted}</td>
+                    <td>
+                      <span className="badge" style={{ backgroundColor: isWa ? '#d1f4e0' : '#e0e8f5', color: isWa ? '#0f7a3d' : '#3d7ab5' }}>
+                        {isWa ? '🟢 WhatsApp' : '✉️ Email'}
+                      </span>
+                    </td>
+                    <td>
+                      <Link to={`/prospects/${a.restaurantId}`} style={{ fontWeight: 500, color: 'var(--primary)', textDecoration: 'none' }}>
+                        {a.restaurantName}
+                      </Link>
+                      <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>{a.quartier}</div>
+                    </td>
+                    <td>{a.agent}</td>
+                    <td>
+                      {isCampaign ? (
+                        <strong>Campagne : {(a as CampaignSendActivity).campaignName}</strong>
+                      ) : (
+                        'Envoi individuel'
+                      )}
+                    </td>
+                    <td style={{ fontSize: 12, maxWidth: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {isCampaign ? (
+                        <span style={{ color: 'var(--text-dim)', fontStyle: 'italic' }}>Message de campagne</span>
+                      ) : (
+                        (a as NoteActivity).texte
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+              {filteredHistory.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="empty-state">
+                    Aucun envoi correspondant à ces filtres.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

@@ -19,7 +19,12 @@ export default function Dashboard() {
   const prospects = useCrmStore((s) => s.prospects)
   const tasks = useCrmStore((s) => s.tasks)
   const agents = useCrmStore((s) => s.agents)
+  const currentAgent = useCrmStore((s) => s.currentAgent)
+  const quotas = useCrmStore((s) => s.quotas)
   const joined = useMemo(() => joinProspects(restaurants, prospects), [restaurants, prospects])
+
+  const [viewMode, setViewMode] = useState<'global' | 'agent'>('global')
+  const [leaderboardPeriod, setLeaderboardPeriod] = useState<'semaine' | 'mois' | 'total'>('total')
 
   const total = joined.length
   const countByStatut = useMemo(() => {
@@ -70,34 +75,223 @@ export default function Dashboard() {
   }, [joined])
 
   const leaderboard = useMemo(() => {
+    const now = Date.now()
     return agents
       .filter((a) => a !== 'Non assigné')
       .map((a) => {
         const mine = joined.filter((j) => (j.crm.agent || 'Non assigné') === a)
-        const won = mine.filter((j) => CLIENT_STATUTS.includes(j.crm.statut) && j.crm.statut !== 'client_inactif')
+        const wonTotal = mine.filter((j) => CLIENT_STATUTS.includes(j.crm.statut) && j.crm.statut !== 'client_inactif')
+        
+        let signes = wonTotal.length
+        let trend = ''
+
+        if (leaderboardPeriod !== 'total') {
+          const days = leaderboardPeriod === 'semaine' ? 7 : 30
+          const cutoff = now - days * MS_PER_DAY
+          const prevCutoff = now - days * 2 * MS_PER_DAY
+
+          const currentWon = wonTotal.filter((j) => {
+            const dateStr = j.crm.statutHistory[0]?.date
+            if (!dateStr) return false
+            return new Date(dateStr).getTime() >= cutoff
+          })
+          const prevWon = wonTotal.filter((j) => {
+            const dateStr = j.crm.statutHistory[0]?.date
+            if (!dateStr) return false
+            const t = new Date(dateStr).getTime()
+            return t >= prevCutoff && t < cutoff
+          })
+
+          signes = currentWon.length
+          if (currentWon.length > prevWon.length) trend = '↑'
+          else if (currentWon.length < prevWon.length) trend = '↓'
+          else trend = '-'
+        }
+
         return {
           agent: a,
           assignes: mine.length,
-          signes: won.length,
-          taux: mine.length ? ((won.length / mine.length) * 100).toFixed(0) : '0',
+          signes,
+          trend,
+          taux: mine.length ? ((wonTotal.length / mine.length) * 100).toFixed(0) : '0',
         }
       })
       .sort((a, b) => b.signes - a.signes || b.assignes - a.assignes)
-  }, [agents, joined])
+  }, [agents, joined, leaderboardPeriod])
 
   const funnelSteps: (typeof STATUTS)[number][] = ['nouveau', 'contacte', 'interesse', 'rdv', 'negociation', 'signe']
   const funnelMax = Math.max(1, ...funnelSteps.map((s) => countByStatut[s]))
 
+  // "Ma journée" computations
+  const myProspects = useMemo(() => {
+    if (!currentAgent) return []
+    return joined.filter(j => j.crm.agent === currentAgent)
+  }, [joined, currentAgent])
+
+  const myRelancesRetard = myProspects.filter((j) => isLate(j.crm.prochaineRelance))
+  const myRelancesAujourdhui = myProspects.filter((j) => isToday(j.crm.prochaineRelance))
+  const myTachesEnRetard = taskList.filter((t) => t.agent === currentAgent && t.statut === 'a_faire' && isLate(t.dateEcheance))
+  
+  const myHotProspects = [...myRelancesRetard, ...myRelancesAujourdhui].sort((a, b) => {
+    const aLate = isLate(a.crm.prochaineRelance)
+    const bLate = isLate(b.crm.prochaineRelance)
+    if (aLate && !bLate) return -1
+    if (!aLate && bLate) return 1
+    return 0
+  })
+
+  const myStaleProspects = useMemo(() => {
+    if (!currentAgent) return []
+    const now = Date.now()
+    return myProspects
+      .filter((j) => !STALE_EXCLUDED.includes(j.crm.statut))
+      .map((j) => ({ j, days: Math.floor((now - lastContactMs(j)) / MS_PER_DAY) }))
+      .filter((x) => x.days > 14)
+      .sort((a, b) => b.days - a.days)
+  }, [myProspects])
+
+  const mySigned = myProspects.filter((j) => CLIENT_STATUTS.includes(j.crm.statut) && j.crm.statut !== 'client_inactif').length
+  const myQuota = currentAgent ? (quotas[currentAgent] || null) : null
+
   return (
     <div>
-      <div className="page-header">
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 16 }}>
         <div>
           <h1 className="page-title">Tableau de bord</h1>
           <p className="page-subtitle">
             Vue d'ensemble de la relation client — prospection restaurants pour NDUGUMi
           </p>
         </div>
+        {currentAgent && (
+          <div style={{ display: 'flex', gap: 8, background: 'var(--panel)', padding: 4, borderRadius: 'var(--radius)', border: '1px solid var(--border)' }}>
+            <button 
+              className={`btn ${viewMode === 'global' ? '' : 'secondary'}`} 
+              onClick={() => setViewMode('global')}
+            >
+              Vue globale
+            </button>
+            <button 
+              className={`btn ${viewMode === 'agent' ? '' : 'secondary'}`} 
+              onClick={() => setViewMode('agent')}
+            >
+              Ma journée
+            </button>
+          </div>
+        )}
       </div>
+
+      {viewMode === 'agent' && currentAgent ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginTop: 24 }}>
+          <div className="kpi-grid">
+            <div className="kpi-card">
+              <div className="kpi-value">{myRelancesAujourdhui.length}</div>
+              <div className="kpi-label">Mes relances du jour</div>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-value" style={{ color: myRelancesRetard.length ? 'var(--danger)' : undefined }}>
+                {myRelancesRetard.length}
+              </div>
+              <div className="kpi-label">Mes relances en retard</div>
+            </div>
+            <div className="kpi-card">
+              <div className="kpi-value" style={{ color: myTachesEnRetard.length ? 'var(--danger)' : undefined }}>
+                {myTachesEnRetard.length}
+              </div>
+              <div className="kpi-label">Mes tâches en retard</div>
+            </div>
+          </div>
+
+          <div className="panel">
+            <h3>Mes prospects chauds à traiter aujourd'hui</h3>
+            {myHotProspects.length > 0 ? (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Établissement</th>
+                    <th>Quartier</th>
+                    <th>Statut</th>
+                    <th>Relance prévue</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myHotProspects.map((j) => (
+                    <tr key={j.id}>
+                      <td>{j.etablissement}</td>
+                      <td>{j.quartier}</td>
+                      <td><StatutBadge statut={j.crm.statut} /></td>
+                      <td style={{ color: isLate(j.crm.prochaineRelance) ? 'var(--danger)' : 'inherit', fontWeight: isLate(j.crm.prochaineRelance) ? 600 : 'normal' }}>
+                        {isLate(j.crm.prochaineRelance) ? 'En retard' : "Aujourd'hui"} ({j.crm.prochaineRelance})
+                      </td>
+                      <td>
+                        <Link className="btn small secondary" to={`/prospects/${j.id}`}>Ouvrir</Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="empty-state">Aucun prospect à relancer aujourd'hui.</div>
+            )}
+          </div>
+
+          <div className="panel">
+            <h3>Mes prospects sans contact depuis +14 jours</h3>
+            {myStaleProspects.length > 0 ? (
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Établissement</th>
+                    <th>Quartier</th>
+                    <th>Statut</th>
+                    <th>Sans contact depuis</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {myStaleProspects.map(({ j, days }) => (
+                    <tr key={j.id}>
+                      <td>{j.etablissement}</td>
+                      <td>{j.quartier}</td>
+                      <td><StatutBadge statut={j.crm.statut} /></td>
+                      <td style={{ color: 'var(--danger)', fontWeight: 600 }}>{days} jours</td>
+                      <td>
+                        <Link className="btn small secondary" to={`/prospects/${j.id}`}>Ouvrir</Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="empty-state">Bravo, aucun prospect délaissé !</div>
+            )}
+          </div>
+
+          <div className="panel">
+            <h3>Ma progression vs mon quota</h3>
+            {myQuota ? (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8, fontSize: 14 }}>
+                  <span>{mySigned} signés</span>
+                  <span>Objectif: {myQuota}</span>
+                </div>
+                <div style={{ background: 'var(--border)', borderRadius: 10, height: 20, overflow: 'hidden' }}>
+                  <div style={{ 
+                    height: '100%', 
+                    background: 'var(--primary)', 
+                    width: `${Math.min(100, (mySigned / myQuota) * 100)}%`,
+                    transition: 'width 0.3s'
+                  }} />
+                </div>
+              </div>
+            ) : (
+              <div className="empty-state">Contactez votre manager pour définir votre objectif</div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24, marginTop: 24 }}>
+
 
       <div className="kpi-grid">
         <div className="kpi-card">
@@ -178,28 +372,48 @@ export default function Dashboard() {
       </div>
 
       <div className="panel">
-        <h3>Classement des agents</h3>
-        <table className="data-table">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <h3 style={{ margin: 0 }}>Classement des agents</h3>
+          <select value={leaderboardPeriod} onChange={(e) => setLeaderboardPeriod(e.target.value as 'semaine' | 'mois' | 'total')}>
+            <option value="semaine">Cette semaine</option>
+            <option value="mois">Ce mois</option>
+            <option value="total">Total historique</option>
+          </select>
+        </div>
+        <table className="data-table" style={{ marginTop: 16 }}>
           <thead>
             <tr>
+              <th>Rang</th>
               <th>Agent</th>
               <th>Restaurants assignés</th>
-              <th>Signés / clients actifs</th>
-              <th>Taux de conversion</th>
+              <th>Signés {leaderboardPeriod !== 'total' ? '(Période)' : '(Total)'}</th>
+              {leaderboardPeriod === 'total' && <th>Taux de conversion</th>}
             </tr>
           </thead>
           <tbody>
-            {leaderboard.map((l) => (
-              <tr key={l.agent}>
-                <td>{l.agent}</td>
-                <td>{l.assignes}</td>
-                <td>{l.signes}</td>
-                <td>{l.taux}%</td>
-              </tr>
-            ))}
+            {leaderboard.map((l, index) => {
+              let badge = ''
+              if (l.signes > 0) {
+                if (index === 0) badge = '🥇 '
+                else if (index === 1) badge = '🥈 '
+                else if (index === 2) badge = '🥉 '
+              }
+              return (
+                <tr key={l.agent}>
+                  <td style={{ fontSize: 18 }}>{badge}{index + 1}</td>
+                  <td style={{ fontWeight: 600 }}>{l.agent}</td>
+                  <td>{l.assignes}</td>
+                  <td>
+                    {l.signes} 
+                    {l.trend && <span style={{ marginLeft: 6, color: l.trend === '↑' ? 'var(--ok)' : l.trend === '↓' ? 'var(--danger)' : 'var(--text-dim)' }}>{l.trend}</span>}
+                  </td>
+                  {leaderboardPeriod === 'total' && <td>{l.taux}%</td>}
+                </tr>
+              )
+            })}
             {leaderboard.length === 0 && (
               <tr>
-                <td colSpan={4} className="empty-state">
+                <td colSpan={5} className="empty-state">
                   Aucun agent configuré. Rendez-vous dans « Équipe » pour en ajouter.
                 </td>
               </tr>
@@ -328,6 +542,8 @@ export default function Dashboard() {
           </tbody>
         </table>
       </div>
+        </div>
+      )}
     </div>
   )
 }

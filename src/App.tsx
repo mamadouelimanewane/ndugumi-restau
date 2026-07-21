@@ -20,6 +20,9 @@ import Marketing from './pages/Marketing'
 import NdugumiSuivi from './pages/NdugumiSuivi'
 import AuditLog from './pages/AuditLog'
 import Doublons from './pages/Doublons'
+import Ressources from './pages/Ressources'
+import Activite from './pages/Activite'
+import { Tournee } from './pages/Tournee'
 import { useCrmStore } from './store/useCrmStore'
 
 export default function App() {
@@ -53,7 +56,10 @@ export default function App() {
           <Route path="/marketing" element={<Marketing />} />
           <Route path="/ndugumi" element={<NdugumiSuivi />} />
           <Route path="/doublons" element={<Doublons />} />
+          <Route path="/ressources" element={<Ressources />} />
+          <Route path="/tournee" element={<Tournee />} />
           <Route path="/audit" element={<AuditLog />} />
+          <Route path="/activite" element={<Activite />} />
           <Route path="/taches" element={<Tasks />} />
           <Route path="/rapports" element={<Reports />} />
           <Route path="/agents" element={<Agents />} />

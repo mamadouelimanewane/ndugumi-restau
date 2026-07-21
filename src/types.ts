@@ -229,10 +229,11 @@ export interface CampaignFilter {
   statut: Statut | ''
   ndugumi: '' | 'oui' | 'non'
   tag: string
+  segment?: string
 }
 
 export function defaultCampaignFilter(): CampaignFilter {
-  return { zone: '', quartier: '', statut: '', ndugumi: '', tag: '' }
+  return { zone: '', quartier: '', statut: '', ndugumi: '', tag: '', segment: '' }
 }
 
 export interface Campaign {

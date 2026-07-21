@@ -87,6 +87,33 @@ const DEFAULT_TEMPLATES: MessageTemplate[] = [
       "Bonjour,\n\nJe vous contacte au sujet de NDUGUMi, l'application qui permet aux restaurants de {quartier} de commander leurs produits de marché (riz, huile, légumes, viandes...) directement depuis leur téléphone, avec livraison.\n\nJe reste à votre disposition pour vous présenter le service.\n\nCordialement,\n{agent}",
     createdAt: '2026-01-01T00:00:00.000Z',
   },
+  {
+    id: 'wa-apres-visite',
+    nom: 'Après visite — sans inscription',
+    canal: 'whatsapp',
+    sujet: '',
+    corps:
+      "Bonjour, c'est {agent} de NDUGUMi.\nMerci pour notre échange de ce jour.\n\nNDUGUMi vous permet de commander vos produits de marché (riz, huile, oignon, poisson...) depuis votre téléphone, avec livraison incluse 🚚\n\nPour essayer gratuitement : ndugumi.com\n\nJe repasserai vous voir prochainement 🙏",
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'wa-relance-7j',
+    nom: 'Relance 7 jours — sans réponse',
+    canal: 'whatsapp',
+    sujet: '',
+    corps:
+      "Bonjour, je me permets de revenir vers vous pour NDUGUMi — {etablissement}.\n\nPlusieurs restaurants de {quartier} ont commencé à utiliser notre service ce mois-ci et sont très satisfaits.\n\nSouhaitez-vous qu'on fixe 10 minutes cette semaine pour une démonstration rapide ?",
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
+  {
+    id: 'wa-apres-livraison',
+    nom: 'Après 1ère livraison réussie',
+    canal: 'whatsapp',
+    sujet: '',
+    corps:
+      "Bonjour ! J'espère que votre commande NDUGUMi s'est bien passée 😊\n\nN'hésitez pas à me dire si tout était bien — qualité, délai, quantités reçues.\n\nEt dès que vous avez besoin de réapprovisionner, pensez à NDUGUMi ! 🛒\n— {agent}",
+    createdAt: '2026-01-01T00:00:00.000Z',
+  },
 ]
 
 function makeDefaultTemplates(): TemplateMap {
