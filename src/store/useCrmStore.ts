@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
+import { supabaseStorage } from '../utils/supabaseStorage'
 import restaurantsSeed from '../data/restaurants.json'
 import {
   type RestaurantSeed,
@@ -825,6 +826,7 @@ export const useCrmStore = create<CrmStore>()(
     }),
     {
       name: 'restau-crm-storage',
+      storage: createJSONStorage(() => supabaseStorage),
       version: 8,
       migrate: (persisted: any) => {
         if (!persisted) return persisted
