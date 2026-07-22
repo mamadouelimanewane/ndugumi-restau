@@ -96,7 +96,8 @@ export default function BriefingFlashModal({ etablissement, quartier, statut, ag
               <p style={{ fontSize: 13, margin: '4px 0 0', color: '#0c4a6e', fontWeight: 600 }}>{brief.offreConseillee}</p>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 8 }}>
+              <button className="btn secondary" onClick={onClose}>Fermer</button>
               <button className="btn primary" onClick={onClose}>Prêt pour la visite 🚀</button>
             </div>
           </div>

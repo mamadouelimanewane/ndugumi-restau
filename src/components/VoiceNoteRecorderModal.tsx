@@ -127,6 +127,12 @@ export default function VoiceNoteRecorderModal({ restaurantId, etablissement, on
           )}
         </div>
 
+        {!transcriptionResult && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+            <button className="btn secondary" onClick={onClose}>Annuler / Fermer</button>
+          </div>
+        )}
+
         {transcriptionResult && (
           <div style={{ background: '#f0fdf4', padding: 16, borderRadius: 8, border: '1px solid #bbf7d0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>

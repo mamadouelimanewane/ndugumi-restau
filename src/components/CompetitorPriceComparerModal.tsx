@@ -83,6 +83,12 @@ export default function CompetitorPriceComparerModal({ etablissement, onClose }:
           </button>
         )}
 
+        {!comparisonResult && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+            <button className="btn secondary" onClick={onClose}>Annuler / Fermer</button>
+          </div>
+        )}
+
         {comparisonResult && (
           <div style={{ background: '#f8fafc', padding: 16, borderRadius: 8, border: '1px solid var(--border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
