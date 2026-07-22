@@ -65,11 +65,19 @@ export default function VisualQuoteModal({ restaurantId, etablissement, telephon
   }
 
   return (
-    <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 20 }}>
-      <div className="panel" style={{ width: '100%', maxWidth: 720, maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div
+      className="modal-overlay"
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 20 }}
+    >
+      <div
+        className="panel"
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: '100%', maxWidth: 720, maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2>📜 Générateur de Devis Visuel WhatsApp</h2>
-          <button className="sidebar-close-btn" onClick={onClose}>✕</button>
+          <button className="modal-close-btn" onClick={onClose} aria-label="Fermer la fenêtre">✕</button>
         </div>
 
         {/* Visuel Pro Forma aux couleurs de NDUGUMi */}

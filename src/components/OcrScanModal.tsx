@@ -74,11 +74,19 @@ export default function OcrScanModal({ onClose, onApply }: OcrScanModalProps) {
   }
 
   return (
-    <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 20 }}>
-      <div className="panel" style={{ width: '100%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div
+      className="modal-overlay"
+      onClick={onClose}
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 20 }}
+    >
+      <div
+        className="panel"
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: '100%', maxWidth: 640, maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}
+      >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h2>📷 Scanner OCR IA (Cartes, Devantures, Menus)</h2>
-          <button className="sidebar-close-btn" onClick={onClose}>✕</button>
+          <button className="modal-close-btn" onClick={onClose} aria-label="Fermer la fenêtre">✕</button>
         </div>
 
         <p style={{ fontSize: 13, color: 'var(--text-dim)' }}>
@@ -102,6 +110,12 @@ export default function OcrScanModal({ onClose, onApply }: OcrScanModalProps) {
           <button className="btn" onClick={handleScan} disabled={isScanning}>
             {isScanning ? '🔍 Analyse Vision IA en cours...' : '✨ Analyser la photo par IA'}
           </button>
+        )}
+
+        {!extractedData && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
+            <button className="btn secondary" onClick={onClose}>Annuler / Fermer</button>
+          </div>
         )}
 
         {extractedData && (
@@ -165,6 +179,7 @@ export default function OcrScanModal({ onClose, onApply }: OcrScanModalProps) {
 
             <div style={{ marginTop: 16, display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button className="btn secondary" onClick={() => setExtractedData(null)}>Réessayer</button>
+              <button className="btn secondary" onClick={onClose}>Fermer</button>
               <button className="btn primary" onClick={handleConfirm}>Créer / Mettre à jour la fiche</button>
             </div>
           </div>

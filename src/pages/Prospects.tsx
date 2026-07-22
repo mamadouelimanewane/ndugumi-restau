@@ -558,9 +558,20 @@ export default function Prospects() {
       </div>
 
       {showBulkAiModal && (
-        <div className="modal-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 20 }}>
-          <div className="panel" style={{ width: '100%', maxWidth: 800, maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <h2>🪄 Génération IA en masse</h2>
+        <div
+          className="modal-overlay"
+          onClick={() => setShowBulkAiModal(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 20 }}
+        >
+          <div
+            className="panel"
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 800, maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2>🪄 Génération IA en masse</h2>
+              <button className="modal-close-btn" onClick={() => setShowBulkAiModal(false)} aria-label="Fermer">✕</button>
+            </div>
             <p>Générer un message personnalisé pour {selected.size} restaurant(s).</p>
             
             <div className="field-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
