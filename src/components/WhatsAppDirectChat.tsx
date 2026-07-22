@@ -14,6 +14,7 @@ export default function WhatsAppDirectChat({ restaurantId, etablissement, teleph
   const currentAgent = useCrmStore((s) => s.currentAgent)
 
   const [inputMessage, setInputMessage] = useState('')
+  const [botActive, setBotActive] = useState(false)
 
   const chatHistory = useMemo(() => {
     return Object.values(directWhatsAppMessages)
@@ -30,19 +31,33 @@ export default function WhatsAppDirectChat({ restaurantId, etablissement, teleph
 
   function handleSimulateIncoming() {
     sendDirectWhatsAppMessage(restaurantId, `Bonjour ! Pouvez-vous nous livrer 3 sacs de riz et 2 bidons d'huile aujourd'hui ?`, 'Client', 'entrant')
+    if (botActive) {
+      setTimeout(() => {
+        sendDirectWhatsAppMessage(restaurantId, `🤖 [Agent WhatsApp 24/7 NDUGUMi] : Bonjour ! Votre commande de 3 sacs de riz (45 000 FCFA) et 2 bidons d'huile (44 000 FCFA) est bien reçue. Livraison prévue avant 11h. Merci !`, 'Agent Autonome IA', 'sortant')
+      }, 1000)
+    }
   }
 
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 8, overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 420, background: '#efeae2' }}>
       {/* Header WhatsApp */}
-      <div style={{ background: '#075e54', color: '#fff', padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ background: '#075e54', color: '#fff', padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
         <div>
           <strong style={{ fontSize: 14 }}>💬 WhatsApp Direct API — {etablissement}</strong>
           <div style={{ fontSize: 11, opacity: 0.8 }}>{telephone || 'Sans numéro'}</div>
         </div>
-        <button className="btn small secondary" style={{ fontSize: 11, background: 'rgba(255,255,255,0.2)', color: '#fff', borderColor: 'transparent' }} onClick={handleSimulateIncoming}>
-          ⚡ Simuler Réponse Client
-        </button>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <button
+            className="btn small secondary"
+            style={{ fontSize: 11, background: botActive ? '#25d366' : 'rgba(255,255,255,0.2)', color: '#fff', borderColor: 'transparent' }}
+            onClick={() => setBotActive(!botActive)}
+          >
+            {botActive ? '🤖 Chatbot IA Actif 24/7' : '🤖 Activer Chatbot 24/7'}
+          </button>
+          <button className="btn small secondary" style={{ fontSize: 11, background: 'rgba(255,255,255,0.2)', color: '#fff', borderColor: 'transparent' }} onClick={handleSimulateIncoming}>
+            ⚡ Simuler Message Client
+          </button>
+        </div>
       </div>
 
       {/* Zone de Messages */}

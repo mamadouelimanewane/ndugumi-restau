@@ -23,6 +23,10 @@ import VisualQuoteModal from '../components/VisualQuoteModal'
 import OcrScanModal from '../components/OcrScanModal'
 import GpsLocationPicker from '../components/GpsLocationPicker'
 import WhatsAppDirectChat from '../components/WhatsAppDirectChat'
+import VoiceNoteRecorderModal from '../components/VoiceNoteRecorderModal'
+import CompetitorPriceComparerModal from '../components/CompetitorPriceComparerModal'
+import BriefingFlashModal from '../components/BriefingFlashModal'
+import SmartProductRecommendation from '../components/SmartProductRecommendation'
 import { isLate, joinProspects } from '../utils/joined'
 import { computeQuartierDensity } from '../utils/priority'
 import { waLinkWithText } from '../utils/phone'
@@ -352,6 +356,9 @@ export default function ProspectDetail() {
 
   const [showQuoteModal, setShowQuoteModal] = useState(false)
   const [showOcrModal, setShowOcrModal] = useState(false)
+  const [showVoiceModal, setShowVoiceModal] = useState(false)
+  const [showComparerModal, setShowComparerModal] = useState(false)
+  const [showBriefingModal, setShowBriefingModal] = useState(false)
 
   return (
     <div>
@@ -367,6 +374,15 @@ export default function ProspectDetail() {
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button className="btn secondary" onClick={() => setShowBriefingModal(true)}>
+            📑 Brief Commercial Flash
+          </button>
+          <button className="btn secondary" onClick={() => setShowVoiceModal(true)}>
+            🎙️ Note Vocale IA
+          </button>
+          <button className="btn secondary" onClick={() => setShowComparerModal(true)}>
+            📸 Comparateur Prix Photo
+          </button>
           <button className="btn secondary" onClick={() => setShowOcrModal(true)}>
             📷 Scan OCR Photo
           </button>
@@ -378,6 +394,10 @@ export default function ProspectDetail() {
           </button>
           <StatutBadge statut={crm.statut} />
         </div>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <SmartProductRecommendation tags={crm.tags} etablissement={restaurant.etablissement} />
       </div>
 
       <div style={{ marginBottom: 16 }}>
@@ -1096,6 +1116,32 @@ export default function ProspectDetail() {
           etablissement={restaurant.etablissement}
           telephone={restaurant.telephone}
           onClose={() => setShowQuoteModal(false)}
+        />
+      )}
+
+      {showVoiceModal && (
+        <VoiceNoteRecorderModal
+          restaurantId={restaurantId}
+          etablissement={restaurant.etablissement}
+          onClose={() => setShowVoiceModal(false)}
+        />
+      )}
+
+      {showComparerModal && (
+        <CompetitorPriceComparerModal
+          etablissement={restaurant.etablissement}
+          onClose={() => setShowComparerModal(false)}
+        />
+      )}
+
+      {showBriefingModal && (
+        <BriefingFlashModal
+          etablissement={restaurant.etablissement}
+          quartier={restaurant.quartier}
+          statut={STATUT_LABELS[crm.statut]}
+          agent={crm.agent}
+          notes={crm.notes}
+          onClose={() => setShowBriefingModal(false)}
         />
       )}
     </div>

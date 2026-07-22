@@ -132,7 +132,20 @@ export default function VisualQuoteModal({ restaurantId, etablissement, telephon
             <div style={{ textAlign: 'right', fontSize: 13, lineHeight: 1.6 }}>
               <div>Sous-total : {sousTotal.toLocaleString()} FCFA</div>
               <div>Livraison : <input type="number" value={fraisLivraison} onChange={(e) => setFraisLivraison(Number(e.target.value))} style={{ width: 70, textAlign: 'right', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 4 }} /> FCFA</div>
-              <div>Remise : -<input type="number" value={remise} onChange={(e) => setRemise(Number(e.target.value))} style={{ width: 70, textAlign: 'right', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 4 }} /> FCFA</div>
+              <div>
+                Remise : -<input type="number" value={remise} onChange={(e) => setRemise(Number(e.target.value))} style={{ width: 70, textAlign: 'right', background: 'rgba(255,255,255,0.1)', color: '#fff', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 4 }} /> FCFA
+                <button
+                  type="button"
+                  style={{ background: '#e7c9a9', color: '#7a1f1f', border: 'none', padding: '2px 6px', borderRadius: 4, marginLeft: 6, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}
+                  onClick={() => {
+                    const opt = Math.round((sousTotal * 0.05) / 500) * 500
+                    setRemise(opt)
+                    alert(`✨ Remise optimale de ${opt.toLocaleString()} FCFA calculée par Dynamic Pricing IA.`)
+                  }}
+                >
+                  ✨ IA
+                </button>
+              </div>
               <div style={{ fontSize: 18, fontWeight: 800, color: '#e7c9a9', marginTop: 4 }}>TOTAL : {total.toLocaleString()} FCFA</div>
             </div>
           </div>
