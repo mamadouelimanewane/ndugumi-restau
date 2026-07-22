@@ -36,9 +36,17 @@ import {
   type Segment,
   type SegmentMap,
   type SegmentFilter,
+  STATUT_LABELS,
   defaultDeal,
   defaultNdugumi,
   defaultUserProfile,
+  defaultRestockInfo,
+  defaultReferralInfo,
+  type RestockInfo,
+  type ReferralInfo,
+  type DirectWhatsAppMessage,
+  type VisualQuote,
+  type AgentGoal,
 } from '../types'
 
 const DEFAULT_PRODUCTS: Product[] = [
@@ -131,7 +139,7 @@ function todayISO(): string {
   return new Date().toISOString()
 }
 
-function makeDefaultState(): ProspectState {
+function makeDefaultState(id = 0): ProspectState {
   const now = todayISO()
   return {
     statut: 'nouveau',
@@ -145,6 +153,8 @@ function makeDefaultState(): ProspectState {
     statutHistory: [{ statut: 'nouveau', date: now, agent: 'Non assigné' }],
     attachments: [],
     concurrentActuel: '',
+    restock: defaultRestockInfo(),
+    referral: defaultReferralInfo(id),
     createdAt: now,
     updatedAt: now,
   }
@@ -180,6 +190,7 @@ export interface CrmBackup {
   orders: OrderMap
   auditLog: AuditEntry[]
   segments: SegmentMap
+  settings: Record<string, boolean>
   exportedAt: string
 }
 
@@ -199,8 +210,30 @@ interface CrmStore {
   orders: OrderMap
   auditLog: AuditEntry[]
   segments: SegmentMap
+  settings: Record<string, boolean>
+  directWhatsAppMessages: Record<string, DirectWhatsAppMessage>
+  visualQuotes: Record<string, VisualQuote>
+  agentGoals: Record<string, AgentGoal>
 
   ensureAll: () => void
+
+  // WhatsApp Direct API Cloud
+  sendDirectWhatsAppMessage: (restaurantId: number, texte: string, agent: string, direction?: 'sortant' | 'entrant') => void
+
+  // Devis Visuels WhatsApp
+  addVisualQuote: (data: Omit<VisualQuote, 'id' | 'createdAt'>) => string
+
+  // Coordonnées GPS & Navigation
+  updateGpsCoords: (id: number, lat: number, lng: number) => void
+
+  // Réapprovisionnement prédictif
+  updateRestockInfo: (id: number, fields: Partial<RestockInfo>) => void
+
+  // Parrainage B2B
+  setParrain: (filleulId: number, parrainId: number) => void
+
+  // Gamification & Objectifs Agents
+  setAgentGoal: (agent: string, fields: Partial<AgentGoal>) => void
 
   // Restaurants (fiche établissement)
   addRestaurant: (data: Omit<RestaurantSeed, 'id'>) => number
@@ -242,10 +275,14 @@ interface CrmStore {
   setQuota: (agent: string, target: number | null) => void
   setUserProfile: (nom: string, fields: Partial<Omit<UserProfile, 'nom'>>) => void
   setCurrentAgent: (nom: string | null) => void
+  setAiScore: (id: number, score: number) => void
 
   // Commandes NDUGUMi (import de reporting)
-  importOrders: (orders: Omit<Order, 'id' | 'importedAt'>[]) => { imported: number; skipped: number }
-  setOrderRestaurant: (id: string, restaurantId: number | null) => void
+  importOrders: (matches: (Omit<Order, 'id' | 'importedAt'> & { restaurantId: number | null })[]) => { imported: number; skipped: number }
+  setOrderRestaurant: (orderId: string, restaurantId: number | null) => void
+  // API & Webhooks
+  receiveWebhookEvent: (payload: any) => { success: boolean; message: string }
+  setSetting: (key: string, value: boolean) => void
 
   // Concurrence
   setConcurrent: (id: number, concurrentActuel: string) => void
@@ -302,6 +339,76 @@ export const useCrmStore = create<CrmStore>()(
       orders: {},
       auditLog: [],
       segments: {},
+      settings: {},
+      directWhatsAppMessages: {},
+      visualQuotes: {},
+      agentGoals: {},
+
+      sendDirectWhatsAppMessage: (restaurantId, texte, agent, direction = 'sortant') => {
+        const id = 'wa_' + crypto.randomUUID()
+        const msg: DirectWhatsAppMessage = {
+          id,
+          restaurantId,
+          agent,
+          direction,
+          texte,
+          statut: 'lu',
+          date: todayISO(),
+        }
+        set((s) => ({ directWhatsAppMessages: { ...s.directWhatsAppMessages, [id]: msg } }))
+        get().addNote(restaurantId, 'whatsapp', `[WhatsApp Direct API] ${texte}`, agent)
+      },
+
+      addVisualQuote: (data) => {
+        const id = 'quote_' + crypto.randomUUID()
+        const quote: VisualQuote = { ...data, id, createdAt: todayISO() }
+        set((s) => ({ visualQuotes: { ...s.visualQuotes, [id]: quote } }))
+        get().addNote(data.restaurantId, 'proposition', `[Devis Visuel WhatsApp] ${data.items.length} produit(s) · Total: ${data.total.toLocaleString()} FCFA`, data.agent)
+        return id
+      },
+
+      updateGpsCoords: (id, lat, lng) => {
+        set((s) => {
+          const rest = s.restaurants[id]
+          if (!rest) return s
+          return { restaurants: { ...s.restaurants, [id]: { ...rest, exactLat: lat, exactLng: lng } } }
+        })
+        get().logAudit(id, get().currentAgent || 'Système', 'GPS mis à jour', `Latitude: ${lat.toFixed(5)}, Longitude: ${lng.toFixed(5)}`)
+      },
+
+      updateRestockInfo: (id, fields) => {
+        set((s) => {
+          const pr = s.prospects[id] || makeDefaultState(id)
+          const currentRestock = pr.restock || defaultRestockInfo()
+          return {
+            prospects: {
+              ...s.prospects,
+              [id]: { ...pr, restock: { ...currentRestock, ...fields }, updatedAt: todayISO() },
+            },
+          }
+        })
+      },
+
+      setParrain: (filleulId, parrainId) => {
+        set((s) => {
+          const pr = s.prospects[filleulId] || makeDefaultState(filleulId)
+          const ref = pr.referral || defaultReferralInfo(filleulId)
+          return {
+            prospects: {
+              ...s.prospects,
+              [filleulId]: { ...pr, referral: { ...ref, parrainId }, updatedAt: todayISO() },
+            },
+          }
+        })
+        get().logAudit(filleulId, get().currentAgent || 'Système', 'Parrainage B2B', `Affecté au parrain ID #${parrainId}`)
+      },
+
+      setAgentGoal: (agent, fields) => {
+        set((s) => {
+          const current = s.agentGoals[agent] || { agent, objectifSignaturesMensuel: 5, objectifVisitesHebdo: 20, objectifCaMensuel: 1500000 }
+          return { agentGoals: { ...s.agentGoals, [agent]: { ...current, ...fields } } }
+        })
+      },
 
       logAudit: (restaurantId, agent, action, details) => {
         const entry: AuditEntry = { id: crypto.randomUUID(), restaurantId, date: todayISO(), agent, action, details }
@@ -315,8 +422,11 @@ export const useCrmStore = create<CrmStore>()(
         const state = get()
         let changedR = false
         let changedP = false
+        let changedA = false
         const nextR: RestaurantMap = { ...state.restaurants }
         const nextP: ProspectMap = { ...state.prospects }
+        const newAuditLogs: AuditEntry[] = []
+
         for (const r of SEED) {
           if (!nextR[r.id]) {
             nextR[r.id] = r
@@ -327,7 +437,55 @@ export const useCrmStore = create<CrmStore>()(
             changedP = true
           }
         }
-        if (changedR || changedP) set({ restaurants: nextR, prospects: nextP })
+
+        // Automation: auto_churn_risk
+        if (state.settings['auto_churn_risk']) {
+          const now = Date.now()
+          const FOURTEEN_DAYS = 14 * 24 * 60 * 60 * 1000
+
+          const latestOrderByRestau: Record<number, number> = {}
+          for (const o of Object.values(state.orders)) {
+            if (o.restaurantId !== null) {
+              const time = new Date(o.creeLe.replace(' ', 'T')).getTime()
+              if (!Number.isNaN(time)) {
+                latestOrderByRestau[o.restaurantId] = Math.max(latestOrderByRestau[o.restaurantId] || 0, time)
+              }
+            }
+          }
+
+          for (const [idStr, p] of Object.entries(nextP)) {
+            const id = Number(idStr)
+            if (p.statut === 'client_actif' && p.deal.santeCompte === 'bonne') {
+              const transitionToActif = p.statutHistory.find((h) => h.statut === 'client_actif')?.date
+              const lastActivity = latestOrderByRestau[id] || new Date(transitionToActif || p.createdAt).getTime()
+              if (now - lastActivity > FOURTEEN_DAYS) {
+                nextP[id] = { ...p, deal: { ...p.deal, santeCompte: 'a_risque' } }
+                changedP = true
+                changedA = true
+                newAuditLogs.push({
+                  id: crypto.randomUUID(),
+                  restaurantId: id,
+                  date: todayISO(),
+                  agent: 'Système (Auto)',
+                  action: 'Santé modifiée',
+                  details: 'Bonne santé → À risque (Aucune commande > 14 jours)',
+                })
+              }
+            }
+          }
+        }
+
+        if (changedR || changedP) {
+          if (changedA) {
+            set({
+              restaurants: nextR,
+              prospects: nextP,
+              auditLog: [...newAuditLogs, ...state.auditLog].slice(0, MAX_AUDIT_ENTRIES),
+            })
+          } else {
+            set({ restaurants: nextR, prospects: nextP })
+          }
+        }
       },
 
       addRestaurant: (data) => {
@@ -390,6 +548,19 @@ export const useCrmStore = create<CrmStore>()(
         })
         if (previousStatut !== statut) {
           get().logAudit(id, existing.agent || 'Non assigné', 'Statut changé', `${previousStatut} → ${statut}`)
+          
+          // Automation: auto_task_on_signe
+          if (statut === 'signe' && get().settings['auto_task_on_signe']) {
+             const j2 = new Date()
+             j2.setDate(j2.getDate() + 2)
+             get().addTask(id, {
+               titre: 'Appel de bienvenue',
+               description: "Souhaiter la bienvenue au nouveau client et vérifier que tout se passe bien.",
+               dateEcheance: j2.toISOString().split('T')[0],
+               priorite: 'haute',
+               agent: existing.agent || 'Non assigné'
+             })
+          }
         }
       },
 
@@ -659,23 +830,90 @@ export const useCrmStore = create<CrmStore>()(
 
       setCurrentAgent: (nom) => set({ currentAgent: nom }),
 
+      setAiScore: (id, score) => {
+        set((s) => ({
+          prospects: {
+            ...s.prospects,
+            [id]: { ...(s.prospects[id] ?? makeDefaultState()), aiScore: score },
+          },
+        }))
+      },
+
+      receiveWebhookEvent: (payload: any) => {
+        try {
+          const type = payload.type
+          if (type === 'order.created') {
+            const orderData = payload.data
+            if (!orderData || !orderData.orderId) return { success: false, message: 'Invalid order payload' }
+            get().importOrders([orderData])
+            return { success: true, message: `Order ${orderData.orderId} processed via webhook` }
+          }
+          if (type === 'restaurant.signed') {
+            const { phone, name } = payload.data
+            if (!phone) return { success: false, message: 'Missing phone number' }
+            const { restaurants, prospects, setStatut } = get()
+            const match = Object.values(restaurants).find((r) => r.telephone === phone)
+            if (match && prospects[match.id]) {
+              setStatut(match.id, 'signe')
+              return { success: true, message: `Restaurant ${match.etablissement} marked as signed via webhook` }
+            }
+            return { success: false, message: 'Restaurant not found in CRM' }
+          }
+          return { success: false, message: 'Unknown event type' }
+        } catch (e: any) {
+          return { success: false, message: e.message }
+        }
+      },
+
       importOrders: (newOrders) => {
         const state = get()
         const existingOrderIds = new Set(Object.values(state.orders).map((o) => o.orderId))
         let imported = 0
         let skipped = 0
         const additions: OrderMap = {}
+        const prospectsUpdates: ProspectMap = {}
+        const newAuditLogs: AuditEntry[] = []
+
         for (const o of newOrders) {
           if (existingOrderIds.has(o.orderId)) {
             skipped++
             continue
           }
           const id = crypto.randomUUID()
-          additions[id] = { id, importedAt: todayISO(), ...o }
+          additions[id] = { ...o, id, importedAt: todayISO() }
           existingOrderIds.add(o.orderId)
           imported++
+
+          // Automation: auto_client_actif
+          if (state.settings['auto_client_actif'] && o.restaurantId !== null) {
+            const p = state.prospects[o.restaurantId]
+            if (p && p.statut !== 'client_actif' && p.statut !== 'client_inactif') {
+              const pUpdate = prospectsUpdates[o.restaurantId] ?? { ...p }
+              pUpdate.statut = 'client_actif'
+              pUpdate.statutHistory = [
+                { statut: 'client_actif', date: todayISO(), agent: 'Système Automatique' },
+                ...pUpdate.statutHistory,
+              ]
+              prospectsUpdates[o.restaurantId] = pUpdate
+              newAuditLogs.push({
+                id: crypto.randomUUID(),
+                restaurantId: o.restaurantId,
+                date: todayISO(),
+                agent: 'Système (Auto)',
+                action: 'Statut changé',
+                details: `${STATUT_LABELS[p.statut] || p.statut} → Client actif (Nouvelle commande importée)`,
+              })
+            }
+          }
         }
-        if (imported > 0) set((s) => ({ orders: { ...s.orders, ...additions } }))
+
+        if (imported > 0) {
+          set((s) => ({
+            orders: { ...s.orders, ...additions },
+            prospects: { ...s.prospects, ...prospectsUpdates },
+            auditLog: [...newAuditLogs, ...s.auditLog].slice(0, MAX_AUDIT_ENTRIES),
+          }))
+        }
         return { imported, skipped }
       },
 
@@ -685,6 +923,10 @@ export const useCrmStore = create<CrmStore>()(
           if (!existing) return s
           return { orders: { ...s.orders, [id]: { ...existing, restaurantId } } }
         })
+      },
+
+      setSetting: (key, value) => {
+        set((s) => ({ settings: { ...s.settings, [key]: value } }))
       },
 
       addProduct: (data) => {
@@ -781,6 +1023,7 @@ export const useCrmStore = create<CrmStore>()(
           orders: s.orders,
           auditLog: s.auditLog,
           segments: s.segments,
+          settings: s.settings,
           exportedAt: todayISO(),
         }
       },
@@ -802,6 +1045,7 @@ export const useCrmStore = create<CrmStore>()(
           orders: data.orders ?? {},
           auditLog: data.auditLog ?? [],
           segments: data.segments ?? {},
+          settings: data.settings ?? {},
         })
       },
 
@@ -822,6 +1066,7 @@ export const useCrmStore = create<CrmStore>()(
           orders: {},
           auditLog: [],
           segments: {},
+          settings: {},
         }),
     }),
     {
@@ -863,6 +1108,7 @@ export const useCrmStore = create<CrmStore>()(
           orders: persisted.orders ?? {},
           auditLog: persisted.auditLog ?? [],
           segments: persisted.segments ?? {},
+          settings: persisted.settings ?? {},
         }
       },
     }

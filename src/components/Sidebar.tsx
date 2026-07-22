@@ -7,6 +7,7 @@ const links = [
   { to: '/dashboard', label: 'Tableau de bord', icon: '📊', end: true },
   { to: '/prospects', label: 'Prospects', icon: '🍽️', end: false },
   { to: '/workflow', label: 'Parcours client', icon: '🧭', end: false },
+  { to: '/automatisations', label: 'Automatisations', icon: '⚡', end: false },
   { to: '/ressources', label: 'Ressources terrain', icon: '📁', end: false },
   { to: '/tournee', label: 'Tournée du jour', icon: '🗓️', end: false },
   { to: '/pipeline', label: 'Pipeline', icon: '🗂️', end: false },
@@ -21,6 +22,10 @@ const links = [
   { to: '/audit', label: "Journal d'audit", icon: '🕵️', end: false },
   { to: '/agents', label: 'Équipe', icon: '👥', end: false },
   { to: '/activite', label: "Journal d'activité", icon: '⏱️', end: false },
+  { to: '/reapprovisionnement', label: 'Réappro IA', icon: '🔮', end: false },
+  { to: '/leaderboard', label: 'Challenge Commerciaux', icon: '🏆', end: false },
+  { to: '/parrainage', label: 'Parrainage B2B', icon: '🎁', end: false },
+  { to: '/api', label: 'Développeur & API', icon: '⚙️', end: false },
 ]
 
 export default function Sidebar() {

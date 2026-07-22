@@ -5,17 +5,28 @@ import { joinProspects } from '../utils/joined'
 import { CLIENT_STATUTS } from '../types'
 
 const MODULES = [
-  { to: '/prospects', icon: '🍽️', title: 'Prospects', desc: 'Liste des 235 restaurants, filtres, score de priorité, import/export.' },
+  { to: '/dashboard', icon: '📊', title: 'Tableau de bord', desc: 'Analytics globales, conversion et performances par agent.' },
+  { to: '/prospects', icon: '🍽️', title: 'Prospects', desc: 'Liste des restaurants, filtres, score de priorité, import/export.' },
   { to: '/workflow', icon: '🧭', title: 'Parcours client', desc: "De l'identification du prospect à la gestion du compte client actif." },
-  { to: '/pipeline', icon: '🗂️', title: 'Pipeline', desc: 'Vue Kanban par étape de la prospection.' },
-  { to: '/carte', icon: '🗺️', title: 'Carte', desc: 'Géolocalisation des restaurants par quartier.' },
-  { to: '/catalogue', icon: '🛒', title: 'Catalogue produits', desc: 'Produits de marché proposables aux restaurants.' },
-  { to: '/communication', icon: '💬', title: 'Communication', desc: 'Modèles et envoi de messages WhatsApp / Email.' },
-  { to: '/marketing', icon: '📣', title: 'Marketing', desc: 'Campagnes ciblées et suivi de performance.' },
-  { to: '/ndugumi', icon: '📦', title: 'Suivi NDUGUMi', desc: "Adoption de l'appli par les clients signés." },
-  { to: '/taches', icon: '✅', title: 'Tâches & agenda', desc: 'Relances, rendez-vous, vue calendrier.' },
-  { to: '/rapports', icon: '📈', title: 'Rapports', desc: 'Entonnoir de conversion, activité, comptes clients.' },
-  { to: '/agents', icon: '👥', title: 'Équipe & paramètres', desc: 'Agents, quotas, sauvegarde, réglages NDUGUMi.' },
+  { to: '/automatisations', icon: '⚡', title: 'Automatisations', desc: 'Règles intelligentes et déclencheurs automatiques.' },
+  { to: '/ressources', icon: '📁', title: 'Ressources terrain', desc: "Fiches d'enquête, guides de vente et documents PDF." },
+  { to: '/tournee', icon: '🗓️', title: 'Tournée du jour', desc: 'Planification et optimisation des visites terrain.' },
+  { to: '/pipeline', icon: '🗂️', title: 'Pipeline', desc: 'Vue Kanban interactive par étape de prospection.' },
+  { to: '/carte', icon: '🗺️', title: 'Carte', desc: 'Géolocalisation des restaurants et calcul d\'itinéraires.' },
+  { to: '/catalogue', icon: '🛒', title: 'Catalogue produits', desc: 'Produits vivriers et matières premières proposables.' },
+  { to: '/communication', icon: '💬', title: 'Communication', desc: 'Modèles, scripts et historique WhatsApp / Email.' },
+  { to: '/marketing', icon: '📣', title: 'Marketing', desc: 'Campagnes ciblées et suivi d\'impact.' },
+  { to: '/ndugumi', icon: '📦', title: 'Suivi NDUGUMi', desc: "Commandes réelles et adoption de l'application." },
+  { to: '/taches', icon: '✅', title: 'Tâches & agenda', desc: 'Relances, rendez-vous et vue calendrier.' },
+  { to: '/rapports', icon: '📈', title: 'Rapports', desc: 'Entonnoir de conversion, activité et santé des comptes.' },
+  { to: '/doublons', icon: '🧬', title: 'Doublons', desc: 'Détection et fusion des fiches en double.' },
+  { to: '/audit', icon: '🕵️', title: 'Journal d\'audit', desc: 'Traçabilité complète des modifications du CRM.' },
+  { to: '/agents', icon: '👥', title: 'Équipe & agents', desc: 'Gestion des commerciaux, rôles et synchronisation.' },
+  { to: '/activite', icon: '⏱️', title: 'Journal d\'activité', desc: 'Flux chronologique des interactions et événements.' },
+  { to: '/reapprovisionnement', icon: '🔮', title: 'Réappro IA', desc: 'Prédiction des ruptures et relances automatiques.' },
+  { to: '/leaderboard', icon: '🏆', title: 'Challenge Commerciaux', desc: 'Gamification, badges et classement d\'équipe.' },
+  { to: '/parrainage', icon: '🎁', title: 'Parrainage B2B', desc: 'Réseau de recommandation inter-restaurants.' },
+  { to: '/api', icon: '⚙️', title: 'Développeur & API', desc: 'Intégrations Webhook et simulateur d\'événements.' },
 ]
 
 export default function Landing() {

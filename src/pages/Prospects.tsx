@@ -9,6 +9,7 @@ import { computeQuartierDensity, priorityScore } from '../utils/priority'
 import { parseRestaurantsFile } from '../utils/importRestaurants'
 import { fetchAiMessage } from '../utils/ai'
 import { STATUTS, STATUT_LABELS, type Statut, type Zone } from '../types'
+import OcrScanModal from '../components/OcrScanModal'
 
 type SortKey = '' | 'score' | 'statut' | 'quartier' | 'relance'
 
@@ -57,6 +58,7 @@ export default function Prospects() {
   const importInputRef = useRef<HTMLInputElement>(null)
 
   const [showBulkAiModal, setShowBulkAiModal] = useState(false)
+  const [showOcrModal, setShowOcrModal] = useState(false)
   const [aiObjectif, setAiObjectif] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedMessages, setGeneratedMessages] = useState<Record<number, string>>({})
@@ -278,6 +280,9 @@ export default function Prospects() {
           </p>
         </div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn secondary" onClick={() => setShowOcrModal(true)}>
+            📷 Scan Photo OCR
+          </button>
           <button className="btn secondary" onClick={handleImportClick}>
             Importer
           </button>
@@ -613,6 +618,16 @@ export default function Prospects() {
             )}
           </div>
         </div>
+      )}
+
+      {showOcrModal && (
+        <OcrScanModal
+          onClose={() => setShowOcrModal(false)}
+          onApply={(data) => {
+            const id = addRestaurant(data)
+            navigate(`/prospects/${id}`)
+          }}
+        />
       )}
     </div>
   )

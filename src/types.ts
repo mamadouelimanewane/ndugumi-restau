@@ -6,6 +6,8 @@ export interface RestaurantSeed {
   telephone: string
   quartier: string
   zone: Zone
+  exactLat?: number
+  exactLng?: number
 }
 
 export type Statut =
@@ -174,6 +176,38 @@ export interface Attachment {
   agent: string
 }
 
+export interface RestockInfo {
+  frequenceJours: number // ex: 7 jours
+  dernierAchatDate: string | null // ISO date
+  produitPhare: string // ex: "Riz 25kg"
+  quantiteHabituelle: number // ex: 2
+  autoAlertActive: boolean
+}
+
+export function defaultRestockInfo(): RestockInfo {
+  return {
+    frequenceJours: 7,
+    dernierAchatDate: null,
+    produitPhare: 'Riz brisé parfumé 25kg',
+    quantiteHabituelle: 2,
+    autoAlertActive: true,
+  }
+}
+
+export interface ReferralInfo {
+  referralCode: string // Code unique ex: "NDUG-77123"
+  parrainId: number | null // ID du restaurant parrain
+  remisesAccumulees: number // FCFA
+}
+
+export function defaultReferralInfo(restaurantId: number): ReferralInfo {
+  return {
+    referralCode: `NDUG-${restaurantId}-${Math.floor(1000 + Math.random() * 9000)}`,
+    parrainId: null,
+    remisesAccumulees: 0,
+  }
+}
+
 export interface ProspectState {
   statut: Statut
   agent: string
@@ -186,6 +220,9 @@ export interface ProspectState {
   statutHistory: StatutHistoryEntry[]
   attachments: Attachment[]
   concurrentActuel: string // texte libre : appli concurrente déjà utilisée par le restaurant, le cas échéant
+  aiScore?: number // Score de probabilité de conversion calculé par l'IA (0-100)
+  restock?: RestockInfo
+  referral?: ReferralInfo
   createdAt: string
   updatedAt: string
 }
@@ -323,3 +360,51 @@ export interface Segment {
 }
 
 export type SegmentMap = Record<string, Segment>
+
+export type DirectWhatsAppStatus = 'envoye' | 'livre' | 'lu' | 'erreur'
+
+export interface DirectWhatsAppMessage {
+  id: string
+  restaurantId: number
+  agent: string
+  direction: 'sortant' | 'entrant'
+  texte: string
+  statut: DirectWhatsAppStatus
+  date: string // ISO
+}
+
+export interface VisualQuoteItem {
+  produitId: string
+  nom: string
+  quantite: number
+  prixUnitaire: number
+  unite: string
+}
+
+export interface VisualQuote {
+  id: string
+  restaurantId: number
+  etablissement: string
+  agent: string
+  items: VisualQuoteItem[]
+  sousTotal: number
+  fraisLivraison: number
+  remise: number
+  total: number
+  createdAt: string
+}
+
+export interface AgentBadge {
+  id: string
+  titre: string
+  description: string
+  icon: string
+  obtenuLe: string
+}
+
+export interface AgentGoal {
+  agent: string
+  objectifSignaturesMensuel: number
+  objectifVisitesHebdo: number
+  objectifCaMensuel: number // FCFA
+}

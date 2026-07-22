@@ -94,6 +94,13 @@ export default function Pipeline() {
                     ))}
                   </div>
                 )}
+                {j.crm.aiScore !== undefined && (
+                  <div style={{ marginTop: 6 }}>
+                    <span className="badge" style={{ background: '#f3e8ff', color: '#7e22ce', fontSize: 11 }}>
+                      ✨ Probabilité IA : {j.crm.aiScore}%
+                    </span>
+                  </div>
+                )}
                 {STATUTS.indexOf(s) < STATUTS.length - 1 && s !== 'refuse' && s !== 'client_inactif' && (
                   <button
                     className="btn secondary small"

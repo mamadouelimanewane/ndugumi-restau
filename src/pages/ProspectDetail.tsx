@@ -19,6 +19,10 @@ import {
 import StatutBadge from '../components/StatutBadge'
 import PhoneQuickActions from '../components/PhoneQuickActions'
 import AttachmentsPanel from '../components/AttachmentsPanel'
+import VisualQuoteModal from '../components/VisualQuoteModal'
+import OcrScanModal from '../components/OcrScanModal'
+import GpsLocationPicker from '../components/GpsLocationPicker'
+import WhatsAppDirectChat from '../components/WhatsAppDirectChat'
 import { isLate, joinProspects } from '../utils/joined'
 import { computeQuartierDensity } from '../utils/priority'
 import { waLinkWithText } from '../utils/phone'
@@ -56,6 +60,7 @@ export default function ProspectDetail() {
   const addTask = useCrmStore((s) => s.addTask)
   const toggleTask = useCrmStore((s) => s.toggleTask)
   const removeTask = useCrmStore((s) => s.removeTask)
+  const setGlobalAiScore = useCrmStore((s) => s.setAiScore)
 
   const restaurant = restaurants[restaurantId]
   const crm = prospects[restaurantId]
@@ -337,12 +342,16 @@ export default function ProspectDetail() {
         quartierClientsCount: quartierDensity[restaurant.quartier] ?? 0,
       })
       setAiScore(result)
+      setGlobalAiScore(restaurantId, result.score)
     } catch (e: any) {
       setAiScoreError(e?.message || 'Erreur inconnue')
     } finally {
       setAiScoreLoading(false)
     }
   }
+
+  const [showQuoteModal, setShowQuoteModal] = useState(false)
+  const [showOcrModal, setShowOcrModal] = useState(false)
 
   return (
     <div>
@@ -357,12 +366,36 @@ export default function ProspectDetail() {
             {restaurant.quartier} · {restaurant.zone}
           </p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button className="btn secondary" onClick={() => setShowOcrModal(true)}>
+            📷 Scan OCR Photo
+          </button>
+          <button className="btn secondary" onClick={() => setShowQuoteModal(true)}>
+            📜 Devis Visuel WhatsApp
+          </button>
           <button className="btn secondary" onClick={() => exportVisitCardPdf({ ...restaurant, crm })}>
             Fiche de visite (PDF)
           </button>
           <StatutBadge statut={crm.statut} />
         </div>
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <GpsLocationPicker
+          restaurantId={restaurantId}
+          etablissement={restaurant.etablissement}
+          quartier={restaurant.quartier}
+          exactLat={restaurant.exactLat}
+          exactLng={restaurant.exactLng}
+        />
+      </div>
+
+      <div style={{ marginBottom: 16 }}>
+        <WhatsAppDirectChat
+          restaurantId={restaurantId}
+          etablissement={restaurant.etablissement}
+          telephone={restaurant.telephone}
+        />
       </div>
 
       <div className="panel">
@@ -1041,6 +1074,30 @@ export default function ProspectDetail() {
       <button className="btn secondary" onClick={() => navigate('/prospects')}>
         ← Retour
       </button>
+
+      {showOcrModal && (
+        <OcrScanModal
+          onClose={() => setShowOcrModal(false)}
+          onApply={(data) => {
+            updateRestaurant(restaurantId, {
+              etablissement: data.etablissement,
+              telephone: data.telephone,
+              quartier: data.quartier,
+              zone: data.zone,
+            })
+            setTags(restaurantId, Array.from(new Set([...crm.tags, ...data.tags])))
+          }}
+        />
+      )}
+
+      {showQuoteModal && (
+        <VisualQuoteModal
+          restaurantId={restaurantId}
+          etablissement={restaurant.etablissement}
+          telephone={restaurant.telephone}
+          onClose={() => setShowQuoteModal(false)}
+        />
+      )}
     </div>
   )
 }

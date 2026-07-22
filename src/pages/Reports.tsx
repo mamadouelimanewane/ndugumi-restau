@@ -6,6 +6,10 @@ import { exportProspectsCsv } from '../utils/csv'
 import { exportProspectsPdf, exportClientsPdf } from '../utils/pdf'
 import { exportProspectsXlsx, exportClientsXlsx } from '../utils/excel'
 import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
+  BarChart, Bar, FunnelChart, Funnel, LabelList
+} from 'recharts'
+import {
   CLIENT_STATUTS,
   INTERACTION_LABELS,
   SANTE_LABELS,
@@ -41,6 +45,75 @@ export default function Reports() {
   const tasks = useCrmStore((s) => s.tasks)
 
   const joined = useMemo(() => joinProspects(restaurants, prospects), [restaurants, prospects])
+  const ordersList = useMemo(() => Object.values(useCrmStore.getState().orders), [])
+
+  // 1. Data pour Funnel de Conversion
+  const funnelData = useMemo(() => {
+    const counts: Record<string, number> = {
+      nouveau: 0,
+      contacte: 0,
+      interesse: 0,
+      rdv: 0,
+      negociation: 0,
+      signe_actif: 0
+    }
+    for (const j of joined) {
+      if (j.crm.statut === 'nouveau') counts.nouveau++
+      else if (j.crm.statut === 'contacte') { counts.nouveau++; counts.contacte++ }
+      else if (j.crm.statut === 'interesse') { counts.nouveau++; counts.contacte++; counts.interesse++ }
+      else if (j.crm.statut === 'rdv') { counts.nouveau++; counts.contacte++; counts.interesse++; counts.rdv++ }
+      else if (j.crm.statut === 'negociation') { counts.nouveau++; counts.contacte++; counts.interesse++; counts.rdv++; counts.negociation++ }
+      else if (j.crm.statut === 'signe' || j.crm.statut === 'client_actif') {
+        counts.nouveau++; counts.contacte++; counts.interesse++; counts.rdv++; counts.negociation++; counts.signe_actif++
+      }
+    }
+    return [
+      { name: 'Nouveau', value: counts.nouveau, fill: '#94a3b8' },
+      { name: 'Contacté', value: counts.contacte, fill: '#60a5fa' },
+      { name: 'Intéressé', value: counts.interesse, fill: '#fbbf24' },
+      { name: 'RDV', value: counts.rdv, fill: '#f97316' },
+      { name: 'Négo', value: counts.negociation, fill: '#a855f7' },
+      { name: 'Signé/Actif', value: counts.signe_actif, fill: '#22c55e' }
+    ]
+  }, [joined])
+
+  // 2. Data pour Courbe d'Acquisition (Derniers 6 mois)
+  const acquisitionData = useMemo(() => {
+    const data = []
+    const now = new Date()
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthLabel = d.toLocaleDateString('fr-FR', { month: 'short' })
+      let cumul = 0
+      for (const j of joined) {
+        const signature = j.crm.statutHistory.find(h => h.statut === 'signe' || h.statut === 'client_actif')
+        if (signature && new Date(signature.date).getTime() <= d.getTime() + 31*24*60*60*1000) {
+          cumul++
+        }
+      }
+      data.push({ month: monthLabel, clients: cumul })
+    }
+    return data
+  }, [joined])
+
+  // 3. Data pour MRR (Derniers 6 mois)
+  const mrrData = useMemo(() => {
+    const data = []
+    const now = new Date()
+    for (let i = 5; i >= 0; i--) {
+      const start = new Date(now.getFullYear(), now.getMonth() - i, 1).getTime()
+      const end = new Date(now.getFullYear(), now.getMonth() - i + 1, 1).getTime()
+      const monthLabel = new Date(start).toLocaleDateString('fr-FR', { month: 'short' })
+      
+      let mrr = 0
+      for (const o of ordersList) {
+        const time = new Date(o.creeLe.replace(' ', 'T')).getTime()
+        if (time >= start && time < end) mrr += o.grandTotal || 0
+      }
+      data.push({ month: monthLabel, revenu: mrr })
+    }
+    return data
+  }, [ordersList])
 
   const monthlyComparison = useMemo(() => {
     const now = new Date()
@@ -155,6 +228,46 @@ export default function Reports() {
         <div className="kpi-card">
           <div className="kpi-value">{clientsActifsNdugumi}</div>
           <div className="kpi-label">Clients utilisant activement l'appli</div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 24, marginTop: 24, marginBottom: 24 }}>
+        <div className="panel" style={{ height: 350 }}>
+          <h3 style={{ marginBottom: 16 }}>Revenus Générés (Derniers 6 mois)</h3>
+          <ResponsiveContainer width="100%" height="85%">
+            <BarChart data={mrrData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="month" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+              <RechartsTooltip formatter={(val: any) => [`${new Intl.NumberFormat('fr-FR').format(val || 0)} F`, 'Revenu']} />
+              <Bar dataKey="revenu" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        
+        <div className="panel" style={{ height: 350 }}>
+          <h3 style={{ marginBottom: 16 }}>Courbe d'Acquisition (Clients cumulés)</h3>
+          <ResponsiveContainer width="100%" height="85%">
+            <LineChart data={acquisitionData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
+              <XAxis dataKey="month" fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis fontSize={12} tickLine={false} axisLine={false} />
+              <RechartsTooltip />
+              <Line type="monotone" dataKey="clients" stroke="var(--ok)" strokeWidth={3} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="panel" style={{ height: 350 }}>
+          <h3 style={{ marginBottom: 16 }}>Entonnoir de Conversion</h3>
+          <ResponsiveContainer width="100%" height="85%">
+            <FunnelChart>
+              <RechartsTooltip />
+              <Funnel dataKey="value" data={funnelData} isAnimationActive>
+                <LabelList position="right" fill="#000" stroke="none" dataKey="name" />
+              </Funnel>
+            </FunnelChart>
+          </ResponsiveContainer>
         </div>
       </div>
 

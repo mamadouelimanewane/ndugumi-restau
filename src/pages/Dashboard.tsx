@@ -21,6 +21,7 @@ export default function Dashboard() {
   const agents = useCrmStore((s) => s.agents)
   const currentAgent = useCrmStore((s) => s.currentAgent)
   const quotas = useCrmStore((s) => s.quotas)
+  const orders = useCrmStore((s) => s.orders)
   const joined = useMemo(() => joinProspects(restaurants, prospects), [restaurants, prospects])
 
   const [viewMode, setViewMode] = useState<'global' | 'agent'>('global')
@@ -57,6 +58,19 @@ export default function Dashboard() {
       .filter((x) => x.days >= staleThreshold)
       .sort((a, b) => b.days - a.days)
   }, [joined, staleThreshold])
+
+  const ordersList = useMemo(() => Object.values(orders), [orders])
+  const mrr = useMemo(() => {
+    const now = Date.now()
+    const last30Days = ordersList.filter(o => (now - new Date(o.creeLe.replace(' ', 'T')).getTime()) <= 30 * MS_PER_DAY)
+    return last30Days.reduce((sum, o) => sum + (o.grandTotal || 0), 0)
+  }, [ordersList])
+  
+  const panierMoyen = useMemo(() => {
+    if (ordersList.length === 0) return 0
+    const total = ordersList.reduce((sum, o) => sum + (o.grandTotal || 0), 0)
+    return Math.round(total / ordersList.length)
+  }, [ordersList])
 
   const byZone = useMemo(() => {
     const m: Record<string, number> = {}
@@ -294,6 +308,14 @@ export default function Dashboard() {
 
 
       <div className="kpi-grid">
+        <div className="kpi-card" style={{ background: '#f0fdf4', borderColor: '#dcfce7' }}>
+          <div className="kpi-value" style={{ color: 'var(--ok)' }}>{new Intl.NumberFormat('fr-FR').format(mrr)} F</div>
+          <div className="kpi-label">MRR (Commandes 30j)</div>
+        </div>
+        <div className="kpi-card" style={{ background: '#f0fdf4', borderColor: '#dcfce7' }}>
+          <div className="kpi-value" style={{ color: 'var(--ok)' }}>{new Intl.NumberFormat('fr-FR').format(panierMoyen)} F</div>
+          <div className="kpi-label">Panier Moyen</div>
+        </div>
         <div className="kpi-card">
           <div className="kpi-value">{total}</div>
           <div className="kpi-label">Restaurants au total</div>
