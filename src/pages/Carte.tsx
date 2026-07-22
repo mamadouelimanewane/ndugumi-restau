@@ -1,12 +1,32 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import L from 'leaflet'
-import { MapContainer, TileLayer, CircleMarker, Marker, Polyline, Popup } from 'react-leaflet'
+import { MapContainer, TileLayer, CircleMarker, Marker, Polyline, Popup, useMap } from 'react-leaflet'
 import { useCrmStore } from '../store/useCrmStore'
 import { joinProspects } from '../utils/joined'
 import { jitteredCoords, DAKAR_CENTER } from '../data/quartierCoords'
 import { nearestNeighborRoute, type RouteStop } from '../utils/route'
 import { STATUTS, STATUT_LABELS, STATUT_COLORS, type Statut } from '../types'
+
+// Correction des icônes par défaut Leaflet sous Vite/Rollup
+delete (L.Icon.Default.prototype as any)._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+})
+
+// Composant de redimensionnement dynamique de la carte au chargement React
+function MapResizer() {
+  const map = useMap()
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize()
+    }, 250)
+    return () => clearTimeout(timer)
+  }, [map])
+  return null
+}
 
 function routeNumberIcon(n: number) {
   return L.divIcon({
@@ -15,6 +35,13 @@ function routeNumberIcon(n: number) {
     iconSize: [24, 24],
     iconAnchor: [12, 12],
   })
+}
+
+function getCoords(j: { id: number; quartier: string; exactLat?: number; exactLng?: number }): [number, number] {
+  if (j.exactLat && j.exactLng) {
+    return [j.exactLat, j.exactLng]
+  }
+  return jitteredCoords(j.quartier, j.id)
 }
 
 export default function Carte() {
@@ -32,6 +59,15 @@ export default function Carte() {
   const [ndugumiFilter, setNdugumiFilter] = useState<'' | 'oui' | 'non'>('')
   const [agentFilter, setAgentFilter] = useState('')
   const segmentList = useMemo(() => Object.values(segments).sort((a, b) => a.nom.localeCompare(b.nom)), [segments])
+
+  function resetFilters() {
+    setZoneFilter('')
+    setQuartierFilter('')
+    setStatutFilter('')
+    setNdugumiFilter('')
+    setAgentFilter('')
+    setRoute(null)
+  }
 
   function handleLoadSegment(id: string) {
     const seg = segments[id]
@@ -72,7 +108,7 @@ export default function Carte() {
   }, [filtered])
 
   function handleComputeRoute() {
-    const points = filtered.map((j) => ({ id: j.id, coords: jitteredCoords(j.quartier, j.id) }))
+    const points = filtered.map((j) => ({ id: j.id, coords: getCoords(j) }))
     if (points.length === 0) {
       setRoute(null)
       return
@@ -88,7 +124,7 @@ export default function Carte() {
         <div>
           <h1 className="page-title">Carte des restaurants</h1>
           <p className="page-subtitle">
-            {filtered.length} / {joined.length} restaurants affichés · positions approximatives par quartier
+            {filtered.length} / {joined.length} restaurants affichés · positions réelles GPS ou approximatives par quartier
           </p>
         </div>
       </div>
@@ -141,15 +177,15 @@ export default function Carte() {
         <button className="btn secondary" onClick={handleComputeRoute}>
           Calculer l'itinéraire du jour
         </button>
-        {route && (
-          <button className="btn secondary" onClick={() => setRoute(null)}>
-            Effacer l'itinéraire
+        {(zoneFilter || quartierFilter || statutFilter || ndugumiFilter || agentFilter || route) && (
+          <button className="btn secondary" onClick={resetFilters}>
+            🔄 Réinitialiser les filtres
           </button>
         )}
       </div>
 
       {route && (
-        <div className="panel">
+        <div className="panel" style={{ marginBottom: 16 }}>
           <h3>
             Itinéraire proposé — {route.length} arrêt{route.length > 1 ? 's' : ''} · ~{totalDistanceKm.toFixed(1)} km au
             total (à vol d'oiseau)
@@ -178,21 +214,18 @@ export default function Carte() {
               ))}
             </tbody>
           </table>
-          <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 6 }}>
-            Ordre calculé par plus-proche-voisin depuis le centre de Dakar, à partir des positions approximatives par
-            quartier — une aide à la planification, pas un GPS précis.
-          </div>
         </div>
       )}
 
-      <div className="panel" style={{ padding: 8 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 8, fontSize: 11.5 }}>
+      <div className="panel" style={{ padding: 12 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12, fontSize: 12, alignItems: 'center' }}>
+          <span style={{ fontWeight: 700 }}>Légende :</span>
           {STATUTS.map((s) => (
             <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               <span
                 style={{
-                  width: 10,
-                  height: 10,
+                  width: 12,
+                  height: 12,
                   borderRadius: '50%',
                   background: STATUT_COLORS[s],
                   display: 'inline-block',
@@ -201,14 +234,18 @@ export default function Carte() {
               {STATUT_LABELS[s]}
             </span>
           ))}
+          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)' }}>
+            📍 Marqueur épais = GPS Réel | ⭕ Cercle classique = Quartier estimé
+          </span>
         </div>
 
-        <div style={{ height: '65vh', borderRadius: 8, overflow: 'hidden' }}>
+        <div style={{ height: '65vh', minHeight: 400, borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
           <MapContainer
             center={DAKAR_CENTER}
             zoom={12}
             style={{ height: '100%', width: '100%' }}
           >
+            <MapResizer />
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -228,7 +265,7 @@ export default function Carte() {
                         {i + 1}. {nameById[r.id] ?? '—'}
                       </strong>
                       <div style={{ fontSize: 12, margin: '4px 0' }}>{r.distanceFromPrevKm.toFixed(1)} km depuis l'arrêt précédent</div>
-                      <button className="btn small" onClick={() => navigate(`/prospects/${r.id}`)}>
+                      <button className="btn small primary" onClick={() => navigate(`/prospects/${r.id}`)}>
                         Voir la fiche
                       </button>
                     </div>
@@ -236,17 +273,18 @@ export default function Carte() {
                 </Marker>
               ))}
             {!route && filtered.map((j) => {
-              const [lat, lng] = jitteredCoords(j.quartier, j.id)
+              const coords = getCoords(j)
+              const isExactGps = Boolean(j.exactLat && j.exactLng)
               return (
                 <CircleMarker
                   key={j.id}
-                  center={[lat, lng]}
-                  radius={6}
+                  center={coords}
+                  radius={isExactGps ? 9 : 6}
                   pathOptions={{
                     color: STATUT_COLORS[j.crm.statut],
                     fillColor: STATUT_COLORS[j.crm.statut],
                     fillOpacity: 0.85,
-                    weight: 1,
+                    weight: isExactGps ? 3 : 1,
                   }}
                 >
                   <Popup>
@@ -255,16 +293,19 @@ export default function Carte() {
                       <div style={{ fontSize: 12, margin: '4px 0' }}>
                         {j.quartier} · {j.telephone}
                       </div>
+                      <div style={{ fontSize: 11, color: isExactGps ? '#047857' : '#6b7280', fontWeight: 600, marginBottom: 4 }}>
+                        {isExactGps ? '📍 GPS Réel enregistré' : '⭕ Position quartier estimée'}
+                      </div>
                       <div style={{ fontSize: 12, marginBottom: 6 }}>{STATUT_LABELS[j.crm.statut]}</div>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button className="btn small" onClick={() => navigate(`/prospects/${j.id}`)}>
+                        <button className="btn small primary" onClick={() => navigate(`/prospects/${j.id}`)}>
                           Voir la fiche
                         </button>
                         <button
                           className="btn secondary small"
                           onClick={() => navigate(`/prospects?quartier=${encodeURIComponent(j.quartier)}`)}
                         >
-                          Tout le quartier
+                          Quartier
                         </button>
                       </div>
                     </div>
@@ -277,9 +318,7 @@ export default function Carte() {
       </div>
 
       <div style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 8 }}>
-        Note : la plupart des adresses collectées ne sont pas assez précises pour un géocodage exact. Chaque
-        restaurant est donc positionné près du centre géographique connu de son quartier, avec un léger écart pour
-        éviter que les points se superposent — ce n'est pas son adresse réelle exacte sur la carte.
+        Note : Les établissements disposant de coordonnées GPS enregistrées sur le terrain sont affichés avec un contour épais (📍 GPS Réel). Les autres restaurants sont positionnés près du centre géographique de leur quartier.
       </div>
     </div>
   )
