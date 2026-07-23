@@ -62,6 +62,7 @@ export default function Prospects() {
 
   const [showBulkAiModal, setShowBulkAiModal] = useState(false)
   const [showOcrModal, setShowOcrModal] = useState(false)
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
   const [aiObjectif, setAiObjectif] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
@@ -175,14 +176,25 @@ export default function Prospects() {
     setSelected(new Set())
   }
 
-  function handleBulkDelete() {
+  function handleSelectGroupPreset(preset: string) {
+    if (preset === 'all_filtered') {
+      setSelected(new Set(filtered.map((j) => j.id)))
+    } else if (preset === 'rejected') {
+      setSelected(new Set(joined.filter((j) => j.crm.statut === 'refuse' || j.crm.statut === 'injoignable').map((j) => j.id)))
+    } else if (preset === 'unassigned') {
+      setSelected(new Set(joined.filter((j) => !j.crm.agent || j.crm.agent === 'Non assigné').map((j) => j.id)))
+    } else if (preset === 'clear') {
+      setSelected(new Set())
+    }
+  }
+
+  function handleConfirmBulkDelete() {
     const count = selected.size
     if (!count) return
-    if (confirm(`Êtes-vous sûr de vouloir supprimer définitivement les ${count} restaurant(s) sélectionné(s) ?\nCette action est irréversible.`)) {
-      deleteRestaurants(Array.from(selected))
-      setSelected(new Set())
-      alert(`🗑️ ${count} restaurant(s) supprimé(s) avec succès.`)
-    }
+    deleteRestaurants(Array.from(selected))
+    setSelected(new Set())
+    setShowBulkDeleteModal(false)
+    alert(`🗑️ ${count} restaurant(s) supprimé(s) avec succès.`)
   }
 
   async function handleGenerateAi() {
@@ -297,6 +309,28 @@ export default function Prospects() {
           <button className="btn secondary" onClick={() => setShowOcrModal(true)}>
             📷 Scan Photo OCR
           </button>
+          <select
+            defaultValue=""
+            onChange={(e) => {
+              handleSelectGroupPreset(e.target.value)
+              e.target.value = ''
+            }}
+            style={{ fontSize: 13, padding: '7px 10px', borderRadius: 6 }}
+          >
+            <option value="" disabled>
+              ☑️ Sélectionner un groupe…
+            </option>
+            <option value="all_filtered">
+              Tous les restaurants affichés ({filtered.length})
+            </option>
+            <option value="rejected">
+              Tous les Injoignables / Refusés
+            </option>
+            <option value="unassigned">
+              Tous les non assignés
+            </option>
+            {selected.size > 0 && <option value="clear">❌ Tout désélectionner</option>}
+          </select>
           <button className="btn secondary" onClick={handleImportClick}>
             Importer
           </button>
@@ -323,8 +357,8 @@ export default function Prospects() {
       </div>
 
       {selected.size > 0 && (
-        <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <strong style={{ fontSize: 13 }}>{selected.size} restaurant(s) sélectionné(s)</strong>
+        <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff5f5', border: '1px solid #feb2b2' }}>
+          <strong style={{ fontSize: 13, color: '#9b1c1c' }}>☑️ {selected.size} restaurant(s) sélectionné(s)</strong>
           <span style={{ fontSize: 13 }}>Assigner à</span>
           <select value={bulkAgent} onChange={(e) => setBulkAgent(e.target.value)}>
             {agents.map((a) => (
@@ -341,8 +375,8 @@ export default function Prospects() {
           </button>
           <button
             className="btn secondary small"
-            style={{ color: '#dc2626', borderColor: '#fca5a5', background: '#fef2f2', fontWeight: 600 }}
-            onClick={handleBulkDelete}
+            style={{ color: '#dc2626', borderColor: '#fca5a5', background: '#fff', fontWeight: 700 }}
+            onClick={() => setShowBulkDeleteModal(true)}
           >
             🗑️ Supprimer le groupe ({selected.size})
           </button>
@@ -690,6 +724,75 @@ export default function Prospects() {
           restaurantId={editingId}
           onClose={() => setEditingId(null)}
         />
+      )}
+
+      {showBulkDeleteModal && (
+        <div
+          className="modal-overlay"
+          onClick={() => setShowBulkDeleteModal(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000, padding: 20 }}
+        >
+          <div
+            className="panel"
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 650, maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ color: '#dc2626', margin: 0 }}>🗑️ Suppression en Masse du Groupe</h2>
+              <button className="modal-close-btn" onClick={() => setShowBulkDeleteModal(false)} aria-label="Fermer">
+                ✕
+              </button>
+            </div>
+
+            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', padding: 12, borderRadius: 6, color: '#991b1b', fontSize: 13.5, fontWeight: 600 }}>
+              ⚠️ Attention : Vous allez supprimer définitivement {selected.size} restaurant(s). Cette action est irréversible.
+            </div>
+
+            <p style={{ fontSize: 13, margin: 0, color: 'var(--text-dim)' }}>
+              Liste des établissements sélectionnés pour la suppression :
+            </p>
+
+            <div style={{ maxHeight: 250, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 6 }}>
+              <table className="data-table" style={{ fontSize: 12 }}>
+                <thead>
+                  <tr>
+                    <th># ID</th>
+                    <th>Établissement</th>
+                    <th>Quartier</th>
+                    <th>Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Array.from(selected).map((id) => {
+                    const r = joined.find((item) => item.id === id)
+                    if (!r) return null
+                    return (
+                      <tr key={id}>
+                        <td>#{id}</td>
+                        <td><strong>{r.etablissement}</strong></td>
+                        <td>{r.quartier}</td>
+                        <td>{STATUT_LABELS[r.crm.statut]}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+              <button className="btn secondary" onClick={() => setShowBulkDeleteModal(false)}>
+                Annuler / Conserver
+              </button>
+              <button
+                className="btn primary"
+                style={{ background: '#dc2626', borderColor: '#b91c1c', color: '#fff' }}
+                onClick={handleConfirmBulkDelete}
+              >
+                🗑️ Confirmer la suppression définitive ({selected.size})
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
