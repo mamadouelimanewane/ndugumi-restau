@@ -239,6 +239,7 @@ interface CrmStore {
   addRestaurant: (data: Omit<RestaurantSeed, 'id'>) => number
   updateRestaurant: (id: number, fields: Partial<Omit<RestaurantSeed, 'id'>>) => void
   deleteRestaurant: (id: number) => void
+  deleteRestaurants: (ids: number[]) => void
 
   // Suivi commercial
   setStatut: (id: number, statut: Statut) => void
@@ -522,6 +523,26 @@ export const useCrmStore = create<CrmStore>()(
           return { restaurants, prospects, tasks }
         })
         get().logAudit(id, agent, 'Restaurant supprimé', nom)
+      },
+
+      deleteRestaurants: (ids) => {
+        const idSet = new Set(ids)
+        const agent = get().currentAgent || 'Non assigné'
+        set((s) => {
+          const restaurants = { ...s.restaurants }
+          const prospects = { ...s.prospects }
+          for (const id of ids) {
+            delete restaurants[id]
+            delete prospects[id]
+          }
+          const tasks = Object.fromEntries(
+            Object.entries(s.tasks).filter(([, t]) => !idSet.has(t.restaurantId))
+          )
+          return { restaurants, prospects, tasks }
+        })
+        for (const id of ids) {
+          get().logAudit(id, agent, 'Suppression en masse', `Restaurant #${id} supprimé via sélection groupe`)
+        }
       },
 
       setStatut: (id, statut) => {

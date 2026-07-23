@@ -27,6 +27,7 @@ import VoiceNoteRecorderModal from '../components/VoiceNoteRecorderModal'
 import CompetitorPriceComparerModal from '../components/CompetitorPriceComparerModal'
 import BriefingFlashModal from '../components/BriefingFlashModal'
 import SmartProductRecommendation from '../components/SmartProductRecommendation'
+import EditRestaurantModal from '../components/EditRestaurantModal'
 import { isLate, joinProspects } from '../utils/joined'
 import { computeQuartierDensity } from '../utils/priority'
 import { waLinkWithText } from '../utils/phone'
@@ -359,6 +360,15 @@ export default function ProspectDetail() {
   const [showVoiceModal, setShowVoiceModal] = useState(false)
   const [showComparerModal, setShowComparerModal] = useState(false)
   const [showBriefingModal, setShowBriefingModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+
+  function handleDeleteRestaurant() {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer définitivement "${restaurant.etablissement}" ?\nCette action est irréversible.`)) {
+      deleteRestaurant(restaurantId)
+      alert('🗑️ Restaurant supprimé avec succès.')
+      navigate('/prospects')
+    }
+  }
 
   return (
     <div>
@@ -374,6 +384,9 @@ export default function ProspectDetail() {
           </p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button className="btn primary" onClick={() => setShowEditModal(true)}>
+            ✏️ Éditer le restaurant
+          </button>
           <button className="btn secondary" onClick={() => setShowBriefingModal(true)}>
             📑 Brief Commercial Flash
           </button>
@@ -391,6 +404,13 @@ export default function ProspectDetail() {
           </button>
           <button className="btn secondary" onClick={() => exportVisitCardPdf({ ...restaurant, crm })}>
             Fiche de visite (PDF)
+          </button>
+          <button
+            className="btn secondary"
+            style={{ color: '#dc2626', borderColor: '#fca5a5', background: '#fef2f2' }}
+            onClick={handleDeleteRestaurant}
+          >
+            🗑️ Supprimer
           </button>
           <StatutBadge statut={crm.statut} />
         </div>
@@ -1142,6 +1162,14 @@ export default function ProspectDetail() {
           agent={crm.agent}
           notes={crm.notes}
           onClose={() => setShowBriefingModal(false)}
+        />
+      )}
+
+      {showEditModal && (
+        <EditRestaurantModal
+          restaurantId={restaurantId}
+          onClose={() => setShowEditModal(false)}
+          onDeleted={() => navigate('/prospects')}
         />
       )}
     </div>

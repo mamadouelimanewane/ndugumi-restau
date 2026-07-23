@@ -10,6 +10,7 @@ import { parseRestaurantsFile } from '../utils/importRestaurants'
 import { fetchAiMessage } from '../utils/ai'
 import { STATUTS, STATUT_LABELS, type Statut, type Zone } from '../types'
 import OcrScanModal from '../components/OcrScanModal'
+import EditRestaurantModal from '../components/EditRestaurantModal'
 
 type SortKey = '' | 'score' | 'statut' | 'quartier' | 'relance'
 
@@ -21,6 +22,8 @@ export default function Prospects() {
   const setStatut = useCrmStore((s) => s.setStatut)
   const setAgent = useCrmStore((s) => s.setAgent)
   const addRestaurant = useCrmStore((s) => s.addRestaurant)
+  const deleteRestaurant = useCrmStore((s) => s.deleteRestaurant)
+  const deleteRestaurants = useCrmStore((s) => s.deleteRestaurants)
   const segments = useCrmStore((s) => s.segments)
   const addSegment = useCrmStore((s) => s.addSegment)
   const removeSegment = useCrmStore((s) => s.removeSegment)
@@ -59,6 +62,7 @@ export default function Prospects() {
 
   const [showBulkAiModal, setShowBulkAiModal] = useState(false)
   const [showOcrModal, setShowOcrModal] = useState(false)
+  const [editingId, setEditingId] = useState<number | null>(null)
   const [aiObjectif, setAiObjectif] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedMessages, setGeneratedMessages] = useState<Record<number, string>>({})
@@ -169,6 +173,16 @@ export default function Prospects() {
   function handleBulkAssign() {
     for (const id of selected) setAgent(id, bulkAgent)
     setSelected(new Set())
+  }
+
+  function handleBulkDelete() {
+    const count = selected.size
+    if (!count) return
+    if (confirm(`Êtes-vous sûr de vouloir supprimer définitivement les ${count} restaurant(s) sélectionné(s) ?\nCette action est irréversible.`)) {
+      deleteRestaurants(Array.from(selected))
+      setSelected(new Set())
+      alert(`🗑️ ${count} restaurant(s) supprimé(s) avec succès.`)
+    }
   }
 
   async function handleGenerateAi() {
@@ -324,6 +338,13 @@ export default function Prospects() {
           </button>
           <button className="btn secondary small" onClick={() => setShowBulkAiModal(true)}>
             🪄 Générer messages IA
+          </button>
+          <button
+            className="btn secondary small"
+            style={{ color: '#dc2626', borderColor: '#fca5a5', background: '#fef2f2', fontWeight: 600 }}
+            onClick={handleBulkDelete}
+          >
+            🗑️ Supprimer le groupe ({selected.size})
           </button>
           <button className="btn secondary small" onClick={() => setSelected(new Set())}>
             Annuler la sélection
@@ -482,6 +503,7 @@ export default function Prospects() {
               <th>Relance</th>
               <th>NDUGUMi</th>
               <th title="Score de priorité : plus c'est haut, plus il faut agir vite">Score</th>
+              <th style={{ textAlign: 'center', width: 120 }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -544,6 +566,28 @@ export default function Prospects() {
                   )}
                 </td>
                 <td style={{ fontWeight: 700, textAlign: 'center' }}>{scores.get(j.id) ?? 0}</td>
+                <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                  <button
+                    className="btn secondary small"
+                    style={{ padding: '3px 8px', fontSize: 11, marginRight: 4 }}
+                    onClick={() => setEditingId(j.id)}
+                    title="Éditer le restaurant"
+                  >
+                    ✏️ Éditer
+                  </button>
+                  <button
+                    className="btn secondary small"
+                    style={{ padding: '3px 8px', fontSize: 11, color: '#dc2626', borderColor: '#fca5a5', background: '#fef2f2' }}
+                    onClick={() => {
+                      if (confirm(`Êtes-vous sûr de vouloir supprimer "${j.etablissement}" ?`)) {
+                        deleteRestaurant(j.id)
+                      }
+                    }}
+                    title="Supprimer le restaurant"
+                  >
+                    🗑️
+                  </button>
+                </td>
               </tr>
             ))}
             {filtered.length === 0 && (
@@ -638,6 +682,13 @@ export default function Prospects() {
             const id = addRestaurant(data)
             navigate(`/prospects/${id}`)
           }}
+        />
+      )}
+
+      {editingId !== null && (
+        <EditRestaurantModal
+          restaurantId={editingId}
+          onClose={() => setEditingId(null)}
         />
       )}
     </div>
