@@ -5,6 +5,7 @@ import WhoAreYou from './components/WhoAreYou'
 import GlobalSearch from './components/GlobalSearch'
 import ReminderNotifier from './components/ReminderNotifier'
 import LandingHeader from './components/LandingHeader'
+import PwaInstallBanner from './components/PwaInstallBanner'
 import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
 import Prospects from './pages/Prospects'
@@ -62,6 +63,7 @@ export default function App() {
       <ReminderNotifier />
       <main className="main">
         {isLandingPage ? <LandingHeader /> : <GlobalSearch />}
+        <PwaInstallBanner />
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/dashboard" element={<Dashboard />} />

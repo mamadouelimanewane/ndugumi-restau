@@ -3,6 +3,8 @@ import { useCrmStore } from '../store/useCrmStore'
 import { joinProspects } from '../utils/joined'
 import { waLinkWithText } from '../utils/phone'
 
+import { requestNotificationPermission, sendWebPushNotification } from '../utils/pushNotifications'
+
 interface SystemNotification {
   id: string
   type: 'relance' | 'impaye' | 'restock' | 'anniversaire'
@@ -95,6 +97,20 @@ export default function Notifications() {
             Toutes les actions prioritaires de la journée centralisées en un seul endroit
           </p>
         </div>
+        <button
+          className="btn primary"
+          onClick={async () => {
+            const granted = await requestNotificationPermission()
+            if (granted) {
+              sendWebPushNotification(
+                '🔔 Alerte NDUGUMi Restau',
+                'Les notifications push en direct sont désormais activées sur votre appareil !'
+              )
+            }
+          }}
+        >
+          📲 Activer & Tester les Push Navigateur
+        </button>
       </div>
 
       {/* Filtres de notification */}

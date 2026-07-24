@@ -192,6 +192,13 @@ export default function Reports() {
           <p className="page-subtitle">Volumes de commandes, santé des comptes clients et activité commerciale</p>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button
+            className="btn primary"
+            style={{ fontWeight: 800, background: '#16a34a', borderColor: '#15803d' }}
+            onClick={() => exportClientsPdf(clients)}
+          >
+            📊 Télécharger Rapport Hebdomadaire PDF
+          </button>
           <button className="btn secondary" onClick={() => exportProspectsCsv(joined)}>
             Exporter tout en CSV
           </button>
