@@ -66,6 +66,7 @@ export default function Communication() {
   const [canalFilter, setCanalFilter] = useState<Canal>('whatsapp')
   const [selectedTemplateId, setSelectedTemplateId] = useState('')
   const [sendingAgent, setSendingAgent] = useState(currentAgent || agents[0])
+  const [selected, setSelected] = useState<Set<number>>(new Set())
 
   const [activeTab, setActiveTab] = useState<'modeles' | 'scripts' | 'history'>('modeles')
   const [openScript, setOpenScript] = useState<string | null>(null)
@@ -137,6 +138,80 @@ export default function Communication() {
       return true
     })
   }, [joined, zoneFilter, quartierFilter, statutFilter, tagFilter])
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every((j) => selected.has(j.id))
+
+  function toggleSelectAll() {
+    setSelected((prev) => {
+      if (allFilteredSelected) return new Set()
+      return new Set(filtered.map((j) => j.id))
+    })
+  }
+
+  function toggleSelectOne(id: number) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function handleBatchSendWhatsapp() {
+    if (!selectedTemplate || selectedTemplate.canal !== 'whatsapp') {
+      alert('Veuillez d\'abord choisir un modèle WhatsApp.')
+      return
+    }
+    const selectedList = joined.filter((j) => selected.has(j.id))
+    if (selectedList.length === 0) return
+
+    if (
+      confirm(
+        `Lancer l'envoi WhatsApp pour les ${selectedList.length} prospect(s) sélectionné(s) ?\nChaque message sera personnalisé et enregistré dans l'historique.`
+      )
+    ) {
+      let count = 0
+      for (const j of selectedList) {
+        const message = mergeTemplate(selectedTemplate.corps, j, { agent: sendingAgent })
+        const link = waLinkWithText(j.telephone, message)
+        if (link) {
+          window.open(link, '_blank')
+          addNote(j.id, 'whatsapp', message, sendingAgent)
+          if (campaignId) logCampaignSend(campaignId, j.id, 'whatsapp')
+          count++
+        }
+      }
+      alert(`🚀 ${count} message(s) WhatsApp ouvert(s) et enregistrés avec succès.`)
+    }
+  }
+
+  function handleBatchSendEmail() {
+    if (!selectedTemplate || selectedTemplate.canal !== 'email') {
+      alert('Veuillez d\'abord choisir un modèle Email.')
+      return
+    }
+    const selectedList = joined.filter((j) => selected.has(j.id))
+    if (selectedList.length === 0) return
+
+    if (confirm(`Lancer l'envoi Email pour les ${selectedList.length} prospect(s) sélectionné(s) ?`)) {
+      let count = 0
+      for (const j of selectedList) {
+        const email = emailTarget(j)
+        if (email) {
+          const subject = mergeTemplate(selectedTemplate.sujet, j, { agent: sendingAgent })
+          const body = mergeTemplate(selectedTemplate.corps, j, { agent: sendingAgent })
+          const link = mailtoLink(email, subject, body)
+          if (link) {
+            window.open(link, '_blank')
+            addNote(j.id, 'email', `${subject}\n\n${body}`, sendingAgent)
+            if (campaignId) logCampaignSend(campaignId, j.id, 'email')
+            count++
+          }
+        }
+      }
+      alert(`✉️ ${count} email(s) généré(s) et enregistrés avec succès.`)
+    }
+  }
 
   function handleSaveTemplate() {
     if (!templateDraft.nom.trim() || !templateDraft.corps.trim()) return
@@ -479,31 +554,107 @@ export default function Communication() {
           </div>
         )}
 
-        <p style={{ fontSize: 12, color: 'var(--text-dim)' }}>
-          {filtered.length} restaurant(s) correspondent à ces filtres. Cliquez WhatsApp ou Email sur chaque
-          ligne pour envoyer individuellement (chaque envoi ouvre l'application correspondante et s'enregistre
-          dans l'historique du restaurant).
-        </p>
+        {selected.size > 0 && (
+          <div
+            className="panel"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              flexWrap: 'wrap',
+              background: '#e8f5e9',
+              border: '1px solid #81c784',
+              marginBottom: 16,
+            }}
+          >
+            <strong style={{ fontSize: 13, color: '#1b5e20' }}>
+              ☑️ {selected.size} prospect(s) sélectionné(s) pour la campagne
+            </strong>
+
+            {canalFilter === 'whatsapp' ? (
+              <button
+                className="btn small"
+                style={{ background: '#25d366', borderColor: '#1f8a4c', color: '#fff', fontWeight: 700 }}
+                onClick={handleBatchSendWhatsapp}
+              >
+                📲 Envoyer WhatsApp au groupe ({selected.size})
+              </button>
+            ) : (
+              <button
+                className="btn small"
+                style={{ background: '#0284c7', borderColor: '#0369a1', color: '#fff', fontWeight: 700 }}
+                onClick={handleBatchSendEmail}
+              >
+                ✉️ Envoyer Email au groupe ({selected.size})
+              </button>
+            )}
+
+            <button className="btn secondary small" onClick={handleExportCSV}>
+              📥 Exporter la sélection (CSV)
+            </button>
+
+            <button className="btn secondary small" onClick={() => setSelected(new Set())}>
+              ❌ Tout désélectionner
+            </button>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+          <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: 0 }}>
+            {filtered.length} restaurant(s) correspondent à cette campagne / filtres. Cochez les cases pour cibler plusieurs prospects ou envoyez individuellement.
+          </p>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <button className="btn secondary small" onClick={toggleSelectAll}>
+              {allFilteredSelected ? '❌ Désélectionner tout' : `☑️ Tout sélectionner (${filtered.length})`}
+            </button>
+          </div>
+        </div>
 
         <table className="data-table">
           <thead>
             <tr>
+              <th style={{ width: 40, textAlign: 'center' }}>
+                <input
+                  type="checkbox"
+                  checked={allFilteredSelected}
+                  onChange={toggleSelectAll}
+                  title="Tout sélectionner / désélectionner"
+                />
+              </th>
               <th>Établissement</th>
               <th>Quartier</th>
+              <th>Statut</th>
               <th>Contact</th>
-              <th></th>
+              <th style={{ textAlign: 'center' }}>Action individuelle</th>
             </tr>
           </thead>
           <tbody>
             {filtered.slice(0, 100).map((j) => (
-              <tr key={j.id}>
-                <td>{j.etablissement}</td>
+              <tr key={j.id} style={{ background: selected.has(j.id) ? '#f0fdf4' : undefined }}>
+                <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                  <input
+                    type="checkbox"
+                    checked={selected.has(j.id)}
+                    onChange={() => toggleSelectOne(j.id)}
+                  />
+                </td>
+                <td>
+                  <strong>{j.etablissement}</strong>
+                  {j.crm.tags.length > 0 && (
+                    <div style={{ fontSize: 10, color: 'var(--text-dim)', marginTop: 2 }}>
+                      {j.crm.tags.join(', ')}
+                    </div>
+                  )}
+                </td>
                 <td>{j.quartier}</td>
+                <td>
+                  <span className="zone-tag">{STATUT_LABELS[j.crm.statut] || j.crm.statut}</span>
+                </td>
                 <td style={{ fontSize: 12 }}>
                   {j.telephone}
-                  {emailTarget(j) && <div>{emailTarget(j)}</div>}
+                  {emailTarget(j) && <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>{emailTarget(j)}</div>}
                 </td>
-                <td style={{ display: 'flex', gap: 6 }}>
+                <td style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
                   <button className="btn small" onClick={() => handleSendWhatsapp(j)} disabled={canalFilter !== 'whatsapp'}>
                     WhatsApp
                   </button>
@@ -519,7 +670,7 @@ export default function Communication() {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={4} className="empty-state">
+                <td colSpan={6} className="empty-state">
                   Aucun restaurant ne correspond à ces filtres.
                 </td>
               </tr>
