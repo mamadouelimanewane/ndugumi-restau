@@ -85,6 +85,7 @@ const MODULE_CATEGORIES: ModuleCategory[] = [
     categoryName: 'Rapports, Audit & Système',
     icon: '🛠️',
     modules: [
+      { to: '/settings', icon: '⚙️', title: 'Paramétrage & Sécurité', desc: 'Gestion des utilisateurs, rôles (RBAC), sécurité 2FA et sauvegardes JSON.', badge: 'NOUVEAU' },
       { to: '/dashboard', icon: '📊', title: 'Tableau de Bord', desc: 'Statistiques globales, entonnoir et performances.' },
       { to: '/rapports', icon: '📈', title: 'Rapports Avancés', desc: 'Santé des comptes, taux de conversion et analyses.' },
       { to: '/doublons', icon: '🧬', title: 'Gestion des Doublons', desc: 'Détection et fusion intelligente des fiches en double.' },

@@ -39,6 +39,7 @@ import Simulateur from './pages/Simulateur'
 import Notifications from './pages/Notifications'
 import Fournisseurs from './pages/Fournisseurs'
 import Academie from './pages/Academie'
+import Settings from './pages/Settings'
 import { useCrmStore } from './store/useCrmStore'
 
 export default function App() {
@@ -93,6 +94,7 @@ export default function App() {
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/fournisseurs" element={<Fournisseurs />} />
           <Route path="/academie" element={<Academie />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/taches" element={<Tasks />} />
           <Route path="/rapports" element={<Reports />} />
           <Route path="/agents" element={<Agents />} />

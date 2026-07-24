@@ -35,7 +35,8 @@ const links = [
   { to: '/notifications', label: 'Alertes Quotidiennes', icon: '🔔', end: false },
   { to: '/fournisseurs', label: 'Achats Fournisseurs', icon: '🏢', end: false },
   { to: '/academie', label: 'Académie Commerciale', icon: '🎓', end: false },
-  { to: '/api', label: 'Développeur & API', icon: '⚙️', end: false },
+  { to: '/settings', label: 'Paramétrage & Sécurité', icon: '⚙️', end: false },
+  { to: '/api', label: 'Développeur & API', icon: '💻', end: false },
 ]
 
 export default function Sidebar() {
