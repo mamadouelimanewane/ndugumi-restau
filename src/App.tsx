@@ -1,9 +1,10 @@
 import { useEffect } from 'react'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import WhoAreYou from './components/WhoAreYou'
 import GlobalSearch from './components/GlobalSearch'
 import ReminderNotifier from './components/ReminderNotifier'
+import LandingHeader from './components/LandingHeader'
 import Landing from './pages/Landing'
 import Dashboard from './pages/Dashboard'
 import Prospects from './pages/Prospects'
@@ -41,6 +42,8 @@ import Academie from './pages/Academie'
 import { useCrmStore } from './store/useCrmStore'
 
 export default function App() {
+  const location = useLocation()
+  const isLandingPage = location.pathname === '/'
   const ensureAll = useCrmStore((s) => s.ensureAll)
   const currentAgent = useCrmStore((s) => s.currentAgent)
 
@@ -54,10 +57,10 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <Sidebar />
+      {!isLandingPage && <Sidebar />}
       <ReminderNotifier />
       <main className="main">
-        <GlobalSearch />
+        {isLandingPage ? <LandingHeader /> : <GlobalSearch />}
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/dashboard" element={<Dashboard />} />
