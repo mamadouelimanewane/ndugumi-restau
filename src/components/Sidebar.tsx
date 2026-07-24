@@ -25,6 +25,11 @@ const links = [
   { to: '/reapprovisionnement', label: 'Réappro IA', icon: '🔮', end: false },
   { to: '/leaderboard', label: 'Challenge Commerciaux', icon: '🏆', end: false },
   { to: '/parrainage', label: 'Parrainage B2B', icon: '🎁', end: false },
+  { to: '/pocket', label: 'Pocket Terrain (5s)', icon: '⚡', end: false },
+  { to: '/credit-invoicing', label: 'Crédits & Factures', icon: '💳', end: false },
+  { to: '/livraisons', label: 'Livraisons & Tournées', icon: '🚛', end: false },
+  { to: '/marche-prices', label: 'Baromètre Prix Dakar', icon: '📊', end: false },
+  { to: '/abonnements', label: 'Abonnements Récurrents', icon: '🔄', end: false },
   { to: '/api', label: 'Développeur & API', icon: '⚙️', end: false },
 ]
 

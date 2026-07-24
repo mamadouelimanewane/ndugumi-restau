@@ -28,6 +28,11 @@ import { Tournee } from './pages/Tournee'
 import PredictiveRestock from './pages/PredictiveRestock'
 import Leaderboard from './pages/Leaderboard'
 import Referrals from './pages/Referrals'
+import CreditInvoicing from './pages/CreditInvoicing'
+import Livraisons from './pages/Livraisons'
+import MarchePrices from './pages/MarchePrices'
+import Abonnements from './pages/Abonnements'
+import PocketCommercial from './pages/PocketCommercial'
 import { useCrmStore } from './store/useCrmStore'
 
 export default function App() {
@@ -70,6 +75,11 @@ export default function App() {
           <Route path="/reapprovisionnement" element={<PredictiveRestock />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/parrainage" element={<Referrals />} />
+          <Route path="/credit-invoicing" element={<CreditInvoicing />} />
+          <Route path="/livraisons" element={<Livraisons />} />
+          <Route path="/marche-prices" element={<MarchePrices />} />
+          <Route path="/abonnements" element={<Abonnements />} />
+          <Route path="/pocket" element={<PocketCommercial />} />
           <Route path="/taches" element={<Tasks />} />
           <Route path="/rapports" element={<Reports />} />
           <Route path="/agents" element={<Agents />} />
