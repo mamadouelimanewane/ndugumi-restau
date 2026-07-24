@@ -67,7 +67,22 @@ export default function LandingHeader() {
         </div>
 
         <Link to="/dashboard">
-          <button className="btn primary" style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 700 }}>
+          <button
+            className="btn"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontWeight: 800,
+              background: '#16a34a',
+              color: '#ffffff',
+              borderColor: '#15803d',
+              padding: '10px 18px',
+              fontSize: 14,
+              borderRadius: 8,
+              boxShadow: '0 2px 6px rgba(22, 163, 74, 0.3)',
+            }}
+          >
             <span>Accéder à l'application</span>
             <span>➔</span>
           </button>
