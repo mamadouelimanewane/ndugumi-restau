@@ -59,12 +59,12 @@ export default function SettingsAPI() {
   async function handleTestSupabaseQuery() {
     setTestStatus('⌛ Connexion et test de la requête en cours...')
     try {
-      const { supabase } = await import('../utils/supabase')
-      const { data, error } = await supabase.from('app_state').select('id, updated_at').limit(5)
-      if (error) {
-        setTestStatus(`⚠️ Supabase accessible mais la table 'app_state' n'existe pas encore. Exécutez le script SQL ci-dessous dans votre Supabase SQL Editor. (${error.message})`)
+      const res = await fetch('/api/health')
+      const result = await res.json()
+      if (!result.ok) {
+        setTestStatus(`⚠️ Supabase accessible mais la table 'app_state' n'existe pas encore. Exécutez le script SQL ci-dessous dans votre Supabase SQL Editor. (${result.message})`)
       } else {
-        setTestStatus(`✅ Connexion Supabase Reussie à 100% ! (${data?.length || 0} enregistrement(s) trouvé(s) dans 'app_state')`)
+        setTestStatus(`✅ Connexion Supabase Reussie à 100% ! (${result.count} enregistrement(s) trouvé(s) dans 'app_state')`)
       }
     } catch (e: any) {
       setTestStatus(`❌ Erreur de connexion Supabase : ${e.message || e}`)

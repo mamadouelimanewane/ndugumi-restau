@@ -1,49 +1,42 @@
 import { StateStorage } from 'zustand/middleware'
-import { supabase } from './supabase'
+
+const isConfigured = Boolean(import.meta.env.VITE_SUPABASE_URL)
 
 export const supabaseStorage: StateStorage = {
   getItem: async (name: string): Promise<string | null> => {
-    if (!import.meta.env.VITE_SUPABASE_URL) {
+    if (!isConfigured) {
       return localStorage.getItem(name)
     }
-    
+
     try {
-      const { data, error } = await supabase
-        .from('app_state')
-        .select('data')
-        .eq('id', name)
-        .single()
-        
-      if (error) {
-        if (error.code === 'PGRST116') {
-           // Not found, maybe it's the first run. Let's try to recover from localStorage
-           const local = localStorage.getItem(name)
-           return local
-        }
-        console.error('Erreur Supabase getItem', error)
+      const res = await fetch(`/api/state?id=${encodeURIComponent(name)}`)
+      if (!res.ok) {
+        console.error('Erreur API state getItem', res.status)
         return localStorage.getItem(name) // fallback
       }
-      return data?.data ? JSON.stringify(data.data) : null
+      const { data } = await res.json()
+      return data ? JSON.stringify(data) : localStorage.getItem(name)
     } catch (e) {
       console.error(e)
       return localStorage.getItem(name)
     }
   },
-  
+
   setItem: async (name: string, value: string): Promise<void> => {
-    if (!import.meta.env.VITE_SUPABASE_URL) {
+    if (!isConfigured) {
       localStorage.setItem(name, value)
       return
     }
 
     try {
       const parsed = JSON.parse(value)
-      const { error } = await supabase
-        .from('app_state')
-        .upsert({ id: name, data: parsed, updated_at: new Date().toISOString() })
-        
-      if (error) {
-        console.error('Erreur Supabase setItem', error)
+      const res = await fetch(`/api/state?id=${encodeURIComponent(name)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: parsed }),
+      })
+      if (!res.ok) {
+        console.error('Erreur API state setItem', res.status)
         localStorage.setItem(name, value) // fallback local backup
       }
     } catch (e) {
@@ -51,16 +44,16 @@ export const supabaseStorage: StateStorage = {
       localStorage.setItem(name, value)
     }
   },
-  
+
   removeItem: async (name: string): Promise<void> => {
-    if (!import.meta.env.VITE_SUPABASE_URL) {
+    if (!isConfigured) {
       localStorage.removeItem(name)
       return
     }
 
     try {
-      const { error } = await supabase.from('app_state').delete().eq('id', name)
-      if (error) console.error('Erreur Supabase removeItem', error)
+      const res = await fetch(`/api/state?id=${encodeURIComponent(name)}`, { method: 'DELETE' })
+      if (!res.ok) console.error('Erreur API state removeItem', res.status)
     } catch (e) {
       console.error(e)
     }
