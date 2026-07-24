@@ -594,6 +594,363 @@ function generateStrategieCommerciale() {
 }
 
 /* ─────────────────────────────────────────────
+   Helpers Word (.doc / .docx)
+───────────────────────────────────────────── */
+function downloadWordDoc(filename: string, title: string, htmlBody: string) {
+  const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office' 
+        xmlns:w='urn:schemas-microsoft-com:office:word' 
+        xmlns='http://www.w3.org/TR/REC-html40'>
+        <head>
+        <meta charset='utf-8'>
+        <title>${title}</title>
+        <style>
+          body { font-family: 'Calibri', 'Segoe UI', Arial, sans-serif; font-size: 11pt; color: #222; margin: 25px; line-height: 1.5; }
+          .banner { background-color: #7a1f1f; color: #ffffff; padding: 12px 18px; border-radius: 4px; margin-bottom: 20px; }
+          .banner h1 { color: #ffffff; font-size: 16pt; font-weight: bold; margin: 0; padding: 0; border: none; }
+          .banner p { color: #f4f1ec; font-size: 10pt; margin: 4px 0 0 0; }
+          h2 { color: #7a1f1f; font-size: 13pt; font-weight: bold; background-color: #f4f1ec; padding: 6px 10px; border-left: 4px solid #c0793a; margin-top: 22px; margin-bottom: 12px; }
+          h3 { color: #5e1717; font-size: 11pt; font-weight: bold; margin-top: 14px; margin-bottom: 6px; }
+          p { margin: 6px 0; }
+          table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 16px; }
+          th { background-color: #7a1f1f; color: #ffffff; font-weight: bold; padding: 8px 10px; text-align: left; font-size: 10pt; border: 1px solid #7a1f1f; }
+          td { padding: 7px 10px; border: 1px solid #cccccc; font-size: 10pt; vertical-align: top; }
+          tr:nth-child(even) td { background-color: #faf7f2; }
+          .box { background-color: #fff9f0; border: 1px solid #ffe3c2; padding: 12px; border-radius: 4px; margin-bottom: 15px; }
+          .footer { font-size: 8.5pt; color: #777777; font-style: italic; border-top: 1px solid #dddddd; padding-top: 10px; margin-top: 30px; }
+        </style>
+        </head>
+        <body>`
+
+  const footer = `<div class="footer">NDUGUMi — Équipe commerciale Dakar & Banlieue | Document modifiable Word — ${new Date().getFullYear()}</div></body></html>`
+  const sourceHTML = header + htmlBody + footer
+
+  const blob = new Blob(['\ufeff', sourceHTML], {
+    type: 'application/msword',
+  })
+
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+function generateFicheEnqueteWord() {
+  const html = `
+    <div class="banner">
+      <h1>NDUGUMi — Équipe Commerciale</h1>
+      <p>Fiche d'Enquête Terrain — Fiche Prospect Restaurant (Format Modifiable Word)</p>
+    </div>
+
+    <h2>SECTION 1 — Identification de l'établissement</h2>
+    <p><strong>Nom de l'établissement :</strong> ____________________________________________________</p>
+    <p><strong>Adresse / Quartier :</strong> ____________________________________________________</p>
+    <p><strong>Zone géographique :</strong> [ &nbsp; ] Dakar intra-muros &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Banlieue</p>
+
+    <p><strong>Type d'établissement :</strong></p>
+    <p>[ &nbsp; ] Restaurant gastronomique &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Dibiterie / Grillade &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Fast-food local<br/>
+       [ &nbsp; ] Thiéboudiène / plats du jour &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Café / Sandwicherie &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Restauration de rue</p>
+
+    <p><strong>Capacité :</strong> [ &nbsp; ] &lt; 20 couverts &nbsp;&nbsp; [ &nbsp; ] 20–50 &nbsp;&nbsp; [ &nbsp; ] 50–100 &nbsp;&nbsp; [ &nbsp; ] &gt; 100</p>
+    <p><strong>Téléphone principal :</strong> _________________________ &nbsp;&nbsp;&nbsp;&nbsp; <strong>WhatsApp :</strong> [ &nbsp; ] Oui &nbsp; [ &nbsp; ] Non</p>
+
+    <h2>SECTION 2 — Contact(s) identifié(s)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Rôle</th>
+          <th>Nom</th>
+          <th>Téléphone</th>
+          <th>Email</th>
+          <th>Décisionnaire ?</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Gérant / Propriétaire</td><td></td><td></td><td></td><td>[ &nbsp; ] Oui &nbsp; [ &nbsp; ] Non</td></tr>
+        <tr><td>Responsable achats</td><td></td><td></td><td></td><td>[ &nbsp; ] Oui &nbsp; [ &nbsp; ] Non</td></tr>
+        <tr><td>Chef cuisinier</td><td></td><td></td><td></td><td>[ &nbsp; ] Oui &nbsp; [ &nbsp; ] Non</td></tr>
+        <tr><td>Autre</td><td></td><td></td><td></td><td>[ &nbsp; ] Oui &nbsp; [ &nbsp; ] Non</td></tr>
+      </tbody>
+    </table>
+    <p><strong>Meilleur moment pour contacter :</strong> [ &nbsp; ] Matin (avant 12h) &nbsp;&nbsp; [ &nbsp; ] Après-midi (14h–17h) &nbsp;&nbsp; [ &nbsp; ] Soir &nbsp;&nbsp; [ &nbsp; ] WhatsApp uniquement</p>
+
+    <h2>SECTION 3 — Situation d'approvisionnement actuelle</h2>
+    <p><strong>Comment vous approvisionnez-vous ?</strong></p>
+    <p>[ &nbsp; ] Je vais moi-même au marché (Tilène, Castors, Sandaga…)<br/>
+       [ &nbsp; ] J'envoie un employé au marché chaque matin<br/>
+       [ &nbsp; ] Un fournisseur / grossiste me livre directement<br/>
+       [ &nbsp; ] J'achète en gros chez un commerçant fixe<br/>
+       [ &nbsp; ] Je passe par une application / commande en ligne</p>
+
+    <p><strong>Fréquence d'achat :</strong> [ &nbsp; ] Chaque jour &nbsp;&nbsp; [ &nbsp; ] 3–4 fois/semaine &nbsp;&nbsp; [ &nbsp; ] 1–2 fois/semaine &nbsp;&nbsp; [ &nbsp; ] Moins souvent</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Produit</th>
+          <th>Acheté ?</th>
+          <th>Quantité / Fréquence</th>
+          <th>Fournisseur actuel</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Riz (brisé, long)</td><td>[ &nbsp; ]</td><td></td><td></td></tr>
+        <tr><td>Huile végétale</td><td>[ &nbsp; ]</td><td></td><td></td></tr>
+        <tr><td>Oignon</td><td>[ &nbsp; ]</td><td></td><td></td></tr>
+        <tr><td>Pomme de terre</td><td>[ &nbsp; ]</td><td></td><td></td></tr>
+        <tr><td>Concentré de tomate</td><td>[ &nbsp; ]</td><td></td><td></td></tr>
+        <tr><td>Poulet / Viande</td><td>[ &nbsp; ]</td><td></td><td></td></tr>
+        <tr><td>Poisson (thiof, yaboy…)</td><td>[ &nbsp; ]</td><td></td><td></td></tr>
+        <tr><td>Légumes frais</td><td>[ &nbsp; ]</td><td></td><td></td></tr>
+        <tr><td>Gaz (bouteille 12kg)</td><td>[ &nbsp; ]</td><td></td><td></td></tr>
+        <tr><td>Eau minérale</td><td>[ &nbsp; ]</td><td></td><td></td></tr>
+      </tbody>
+    </table>
+
+    <p><strong>Budget marché estimé par mois :</strong><br/>
+    [ &nbsp; ] &lt; 100 000 FCFA &nbsp;&nbsp; [ &nbsp; ] 100 000 – 300 000 FCFA &nbsp;&nbsp; [ &nbsp; ] 300 000 – 600 000 FCFA &nbsp;&nbsp; [ &nbsp; ] &gt; 600 000 FCFA</p>
+
+    <h2>SECTION 4 — Problèmes vécus aujourd'hui</h2>
+    <p>[ &nbsp; ] Temps perdu au marché &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Prix instables / augmentations<br/>
+       [ &nbsp; ] Qualité impure / irrégulière &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Ruptures de stock imprévues<br/>
+       [ &nbsp; ] Transport coûteux / difficile &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Fournisseur peu fiable<br/>
+       [ &nbsp; ] Manque de temps pour aller au marché &nbsp;&nbsp;&nbsp;&nbsp; [ &nbsp; ] Difficulté de gestion des stocks</p>
+
+    <h2>SECTION 5 — Connaissance & Réceptivité NDUGUMi</h2>
+    <p><strong>Connaissez-vous l'application NDUGUMi ?</strong><br/>
+    [ &nbsp; ] Non, jamais entendu parler &nbsp;&nbsp; [ &nbsp; ] Entendu parler, pas essayé &nbsp;&nbsp; [ &nbsp; ] Téléchargée non utilisée &nbsp;&nbsp; [ &nbsp; ] Déjà utilisateur</p>
+    <p><strong>Première réaction après présentation :</strong><br/>
+    [ &nbsp; ] Très intéressé &nbsp;&nbsp; [ &nbsp; ] Intéressé &nbsp;&nbsp; [ &nbsp; ] Neutre &nbsp;&nbsp; [ &nbsp; ] Sceptique &nbsp;&nbsp; [ &nbsp; ] Pas intéressé</p>
+
+    <h2>SECTION 6 — Synthèse & Suite à donner (Usage Interne CRM)</h2>
+    <table>
+      <tbody>
+        <tr><td><strong>Statut CRM :</strong></td><td>[ &nbsp; ] Nouveau &nbsp;&nbsp; [ &nbsp; ] Contacté &nbsp;&nbsp; [ &nbsp; ] Intéressé &nbsp;&nbsp; [ &nbsp; ] RDV &nbsp;&nbsp; [ &nbsp; ] Refusé &nbsp;&nbsp; [ &nbsp; ] Injoignable</td></tr>
+        <tr><td><strong>Prochaine action :</strong></td><td>[ &nbsp; ] Rappel &nbsp;&nbsp; [ &nbsp; ] Visite démo &nbsp;&nbsp; [ &nbsp; ] WhatsApp &nbsp;&nbsp; [ &nbsp; ] Inscription &nbsp;&nbsp; [ &nbsp; ] Aucune</td></tr>
+        <tr><td><strong>Date de relance :</strong></td><td>____ / ____ / 2026</td></tr>
+        <tr><td><strong>Agent commercial :</strong></td><td>________________________________________</td></tr>
+        <tr><td><strong>Notes :</strong></td><td><br/><br/></td></tr>
+      </tbody>
+    </table>
+  `
+  downloadWordDoc('NDUGUMi_Fiche_Enquete_Terrain.doc', 'Fiche d\'enquête terrain NDUGUMi', html)
+}
+
+function generateQuestionnaireWord() {
+  const html = `
+    <div class="banner">
+      <h1>NDUGUMi — Équipe Commerciale</h1>
+      <p>Questionnaire de Qualification Rapide (Format Modifiable Word)</p>
+    </div>
+
+    <div class="box">
+      <strong>💬 ACCROCHE DE TERRAIN :</strong><br/>
+      <em>« Bonjour ! Je suis {Prénom} de NDUGUMi. Nous aidons les restaurants de {Quartier} à commander leur marché directement depuis leur téléphone — sans se déplacer, avec livraison incluse. J'aurais juste 5 minutes ? »</em>
+    </div>
+
+    <h2>Q1 — Comment vous approvisionnez-vous aujourd'hui en produits de marché ?</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Réponse entendue</th>
+          <th>Signal</th>
+          <th>Argument NDUGUMi à préparer</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>« Je vais moi-même au marché »</td><td>✅ Fort</td><td>Commandez en 2 min depuis votre téléphone sans fatigue</td></tr>
+        <tr><td>« J'envoie un employé chaque matin »</td><td>✅ Bon</td><td>Évitez le coût caché et gardez le contrôle direct</td></tr>
+        <tr><td>« J'ai un fournisseur qui me livre »</td><td>⚠️ Challenger</td><td>Creuser prix, délais de livraison et produits manquants</td></tr>
+        <tr><td>« On est très bien organisé »</td><td>⚠️ Résistant</td><td>Positionner NDUGUMi comme filet de sécurité secours</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Q2 — C'est quoi votre plus grand problème dans vos achats de marché ?</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Réponse entendue</th>
+          <th>Argument NDUGUMi</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>« Le temps perdu au marché »</td><td>Commandez en 2 minutes depuis votre cuisine</td></tr>
+        <tr><td>« Les prix qui changent tout le temps »</td><td>Nos prix sont transparents, fixes et affichés</td></tr>
+        <tr><td>« L'employé ramène ce qu'il veut »</td><td>Vous choisissez exactement les marques et qualités</td></tr>
+        <tr><td>« Parfois il manque des produits »</td><td>Stock garanti et livraison rapide sous 24h</td></tr>
+        <tr><td>« Le transport coûte cher »</td><td>Livraison directe au restaurant incluse</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Q3, Q4 & Q5 — Qualification & Utilisation</h2>
+    <p><strong>Q3 — Utilisez-vous WhatsApp pour votre business ?</strong><br/>
+    [ &nbsp; ] Oui quotidiennement (Profil idéal) &nbsp;&nbsp; [ &nbsp; ] Oui mais peu &nbsp;&nbsp; [ &nbsp; ] Non / basique</p>
+
+    <p><strong>Q4 — Combien de fois par semaine allez-vous au marché ?</strong><br/>
+    [ &nbsp; ] Chaque jour (Douleur max ⭐⭐⭐) &nbsp;&nbsp; [ &nbsp; ] 3-4 fois/semaine &nbsp;&nbsp; [ &nbsp; ] 1-2 fois &nbsp;&nbsp; [ &nbsp; ] Rarement</p>
+
+    <p><strong>Q5 — Connaissez-vous NDUGUMi ?</strong><br/>
+    [ &nbsp; ] Non &nbsp;&nbsp; [ &nbsp; ] Oui mais pas testé &nbsp;&nbsp; [ &nbsp; ] Déjà utilisateur</p>
+
+    <h2>Réponses aux objections les plus fréquentes</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Objection</th>
+          <th>Réponse NDUGUMi</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>« C'est trop cher »</td><td>Calculez : transport + temps perdu = NDUGUMi est plus économique</td></tr>
+        <tr><td>« Je ne sais pas utiliser les applis »</td><td>Notre agent vous inscrit gratuitement et montre le fonctionnement en 5 min</td></tr>
+        <tr><td>« Mon fournisseur me convient »</td><td>Gardez-le et utilisez NDUGUMi comme solution de secours sans engagement</td></tr>
+        <tr><td>« J'ai pas le temps »</td><td>« Puis-je revenir jeudi à 15h pour 5 minutes de démo ? »</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Grille de Scoring Rapide (0 à 12 points)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Score</th>
+          <th>Statut CRM</th>
+          <th>Priorité</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>9 – 12 pts</td><td>Intéressé → Planifier démo immédiate</td><td>🔴 Haute</td></tr>
+        <tr><td>5 – 8 pts</td><td>Contacté → Relance sous 7 jours</td><td>🟡 Normale</td></tr>
+        <tr><td>0 – 4 pts</td><td>Contacté → Relance sous 30 jours</td><td>🟢 Basse</td></tr>
+      </tbody>
+    </table>
+
+    <h2>Mémo Rapide Saisie CRM</h2>
+    <table>
+      <tbody>
+        <tr><td><strong>Établissement :</strong> ________________________</td><td><strong>Date :</strong> ____/____/2026</td></tr>
+        <tr><td><strong>Contact / Tél :</strong> ________________________</td><td><strong>Score :</strong> _____ / 12</td></tr>
+        <tr><td><strong>Prochaine action :</strong> ________________________</td><td><strong>Agent :</strong> __________________</td></tr>
+      </tbody>
+    </table>
+  `
+  downloadWordDoc('NDUGUMi_Questionnaire_Qualification_Rapide.doc', 'Questionnaire de qualification NDUGUMi', html)
+}
+
+function generateStrategieCommercialeWord() {
+  const html = `
+    <div class="banner">
+      <h1>NDUGUMi — Équipe Commerciale</h1>
+      <p>Guide de Stratégie Commerciale Terrain (Format Modifiable Word)</p>
+    </div>
+
+    <h2>1. Proposition de Valeur NDUGUMi</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Ce que le restaurant GAGNE</th>
+          <th>Ce qu'il arrête de PERDRE</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>⏱ Temps libéré — plus de déplacement au marché</td><td>💸 Coût du transport aller-retour quotidien</td></tr>
+        <tr><td>📱 Commande simple depuis le téléphone</td><td>🕐 1 à 3 heures perdues chaque matin</td></tr>
+        <tr><td>📦 Livraison directement en cuisine</td><td>🤦 Erreurs / oublis de l'employé envoyé</td></tr>
+        <tr><td>💰 Prix transparents et stables affichés</td><td>📉 Marchandage épuisant, incertitude des prix</td></tr>
+        <tr><td>🔁 Historique et suivi des dépenses</td><td>🗒 Gestion manuelle sur cahier / mémoire</td></tr>
+      </tbody>
+    </table>
+
+    <h2>2. Les 4 Profils de Restaurateurs à Dakar</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Profil</th>
+          <th>Description & Cible</th>
+          <th>Pitch Conseillé</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>PROFIL 1 — Le Gérant Débordé ⭐⭐⭐</strong></td>
+          <td>Fait tout lui-même (marché, cuisine, caisse). Cible prioritaire.</td>
+          <td>« Je vois que vous gérez tout vous-même. NDUGUMi vous fait gagner 2h chaque matin. »</td>
+        </tr>
+        <tr>
+          <td><strong>PROFIL 2 — Le Patron Qui Délègue ⭐⭐</strong></td>
+          <td>Envoie un employé faire le marché chaque jour.</td>
+          <td>« Avec NDUGUMi, c'est vous qui choisissez les produits et prix depuis votre téléphone. »</td>
+        </tr>
+        <tr>
+          <td><strong>PROFIL 3 — Le Restaurateur Organisé ⭐</strong></td>
+          <td>A déjà un fournisseur habituel.</td>
+          <td>« Gardez votre fournisseur. NDUGUMi est votre secours en cas d'urgence ou manque. »</td>
+        </tr>
+        <tr>
+          <td><strong>PROFIL 4 — Le Réfractaire au Numérique</strong></td>
+          <td>N'utilise pas de smartphone.</td>
+          <td>Laisser une carte et revenir dans 3 mois sans insister.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>3. Le Cycle de Vente en 5 Étapes</h2>
+    <ol>
+      <li><strong>Repérage terrain :</strong> Identifier les prospects dans la zone grâce à la Carte CRM.</li>
+      <li><strong>Premier contact (5-7 min) :</strong> Qualifier sans interrompre le service (éviter 11h30-14h).</li>
+      <li><strong>Démo / Présentation (15-30 min) :</strong> Montrer l'application sur smartphone et calculer l'économie.</li>
+      <li><strong>Inscription & 1ère commande :</strong> Accompagner le gérant pour passer une première commande test.</li>
+      <li><strong>Suivi & Fidélisation :</strong> Appel systématique à J+1 après la première livraison.</li>
+    </ol>
+
+    <h2>4. Organisation d'une Journée Type</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Horaire</th>
+          <th>Étape</th>
+          <th>Objectif</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>07h00 – 09h00</td><td>Préparation</td><td>Consultation CRM, liste des visites, itinéraire GPS</td></tr>
+        <tr><td>09h00 – 11h30</td><td>🔥 Tournée terrain 1</td><td>6 à 8 nouveaux contacts (1ers passages)</td></tr>
+        <tr><td>11h30 – 14h00</td><td>⛔ Pause Service</td><td>Service dans les restaurants — Ne pas déranger !</td></tr>
+        <tr><td>14h00 – 17h30</td><td>🔥 Visites de fond</td><td>3 à 5 démos approfondies & inscriptions</td></tr>
+        <tr><td>17h30 – 18h30</td><td>Administratif</td><td>Mise à jour CRM, relances WhatsApp et bilan</td></tr>
+      </tbody>
+    </table>
+
+    <h2>5. Objectifs Journaliers Minimum</h2>
+    <ul>
+      <li>Nouveaux prospects contactés : <strong>8 à 12</strong></li>
+      <li>Démonstrations réalisées : <strong>2 à 4</strong></li>
+      <li>Inscriptions & 1ères commandes : <strong>1 à 2</strong></li>
+      <li>Relances effectuées (appels + WhatsApp) : <strong>10+</strong></li>
+    </ul>
+
+    <h2>6. Erreurs à Éviter sur le Terrain</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>❌ Erreur fréquente</th>
+          <th>✅ Bonne pratique</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>Arriver pendant le service (11h30–14h)</td><td>Vérifier l'heure et repasser entre 14h et 16h</td></tr>
+        <tr><td>Lire le questionnaire comme un formulaire sec</td><td>Poser les questions dans une discussion naturelle</td></tr>
+        <tr><td>Parler trop, écouter peu</td><td>Pratiquer l'écoute active (70% écoute, 30% parole)</td></tr>
+        <tr><td>Ne pas remplir le CRM le jour même</td><td>Enregistrer les notes et relances avant 19h</td></tr>
+      </tbody>
+    </table>
+  `
+  downloadWordDoc('NDUGUMi_Strategie_Commerciale.doc', 'Stratégie commerciale NDUGUMi', html)
+}
+
+/* ─────────────────────────────────────────────
    Composant principal — Page Ressources
 ───────────────────────────────────────────── */
 
@@ -615,7 +972,8 @@ const DOCS = [
       'Synthèse & suite à donner → statuts CRM',
     ],
     color: '#7a1f1f',
-    download: generateFicheEnquete,
+    downloadPdf: generateFicheEnquete,
+    downloadWord: generateFicheEnqueteWord,
   },
   {
     id: 'questionnaire',
@@ -633,7 +991,8 @@ const DOCS = [
       'Mémo rapide de saisie CRM',
     ],
     color: '#c0793a',
-    download: generateQuestionnaire,
+    downloadPdf: generateQuestionnaire,
+    downloadWord: generateQuestionnaireWord,
   },
   {
     id: 'strategie',
@@ -652,7 +1011,8 @@ const DOCS = [
       'Erreurs à éviter',
     ],
     color: '#232a3b',
-    download: generateStrategieCommerciale,
+    downloadPdf: generateStrategieCommerciale,
+    downloadWord: generateStrategieCommercialeWord,
   },
 ]
 
@@ -704,14 +1064,14 @@ export default function Ressources() {
         <div>
           <h1 className="page-title">Ressources terrain</h1>
           <p className="page-subtitle">
-            Fiches d'enquête, questionnaires et stratégie commerciale — téléchargeables en PDF
+            Fiches d'enquête, questionnaires et stratégie commerciale — téléchargeables en PDF et Word modifiable
           </p>
         </div>
       </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-        {([['docs', '📄 Documents PDF'], ['wa', '💬 Templates WhatsApp']] as const).map(([tab, label]) => (
+        {([['docs', '📄 Documents (PDF & Word)'], ['wa', '💬 Templates WhatsApp']] as const).map(([tab, label]) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -723,7 +1083,7 @@ export default function Ressources() {
         ))}
       </div>
 
-      {/* ── Tab : Documents PDF ── */}
+      {/* ── Tab : Documents PDF & Word ── */}
       {activeTab === 'docs' && (
         <>
           {/* Bannière explicative */}
@@ -741,7 +1101,7 @@ export default function Ressources() {
                 <h3 style={{ color: '#fff', margin: '0 0 6px' }}>Kit terrain NDUGUMi</h3>
                 <p style={{ margin: 0, fontSize: 13, color: '#c7cede', maxWidth: 600 }}>
                   3 documents conçus pour les commerciaux sur le terrain à Dakar et en banlieue.
-                  Chaque PDF est prêt à imprimer et à utiliser lors des visites de prospection.
+                  Chaque document est disponible en PDF prêt à imprimer et en format <strong>Microsoft Word (.doc) modifiable</strong>.
                   Ils s'articulent avec les statuts du CRM pour un suivi parfait.
                 </p>
               </div>
@@ -778,13 +1138,24 @@ export default function Ressources() {
                   </ul>
                 </div>
 
-                <button
-                  className="btn"
-                  style={{ marginTop: 'auto', background: doc.color, display: 'flex', alignItems: 'center', gap: 8, justifyContent: 'center' }}
-                  onClick={doc.download}
-                >
-                  ⬇️ Télécharger le PDF
-                </button>
+                <div style={{ marginTop: 'auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <button
+                    className="btn"
+                    style={{ background: doc.color, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center', padding: '8px 10px', fontSize: 12 }}
+                    onClick={doc.downloadPdf}
+                    title="Télécharger au format PDF imprimable"
+                  >
+                    📄 Télécharger PDF
+                  </button>
+                  <button
+                    className="btn secondary"
+                    style={{ borderColor: doc.color, color: doc.color, display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center', padding: '8px 10px', fontSize: 12, fontWeight: 700 }}
+                    onClick={doc.downloadWord}
+                    title="Télécharger au format Word (.doc) modifiable"
+                  >
+                    📝 Télécharger Word
+                  </button>
+                </div>
               </div>
             ))}
           </div>
