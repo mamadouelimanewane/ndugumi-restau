@@ -124,6 +124,8 @@ export default function SettingsAPI() {
 
 ALTER TABLE public.app_state ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Lecture et écriture publiques app_state" ON public.app_state;
+
 CREATE POLICY "Lecture et écriture publiques app_state" 
 ON public.app_state FOR ALL 
 USING (true) 
@@ -133,7 +135,7 @@ WITH CHECK (true);`}
             className="btn secondary small"
             style={{ marginTop: 6 }}
             onClick={() =>
-              navigator.clipboard.writeText(`CREATE TABLE IF NOT EXISTS public.app_state (\n  id TEXT PRIMARY KEY,\n  data JSONB NOT NULL,\n  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL\n);\nALTER TABLE public.app_state ENABLE ROW LEVEL SECURITY;\nCREATE POLICY "Lecture et écriture publiques app_state" ON public.app_state FOR ALL USING (true) WITH CHECK (true);`)
+              navigator.clipboard.writeText(`CREATE TABLE IF NOT EXISTS public.app_state (\n  id TEXT PRIMARY KEY,\n  data JSONB NOT NULL,\n  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL\n);\nALTER TABLE public.app_state ENABLE ROW LEVEL SECURITY;\nDROP POLICY IF EXISTS "Lecture et écriture publiques app_state" ON public.app_state;\nCREATE POLICY "Lecture et écriture publiques app_state" ON public.app_state FOR ALL USING (true) WITH CHECK (true);`)
             }
           >
             📋 Copier le Script SQL
