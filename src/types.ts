@@ -231,6 +231,14 @@ export type ProspectMap = Record<number, ProspectState>
 export type RestaurantMap = Record<number, RestaurantSeed>
 export type TaskMap = Record<string, Task>
 
+export interface ProductMedia {
+  id: string
+  url: string // Data URL base64 ou URL de fichier
+  type: 'image' | 'video'
+  name: string
+  size?: number
+}
+
 export interface Product {
   id: string
   nom: string
@@ -238,6 +246,11 @@ export interface Product {
   prixUnitaire: number // FCFA
   unite: string // ex : kg, sac 25kg, carton, litre
   description: string
+  origine?: string
+  stockDispo?: number
+  minimumCommande?: number
+  fournisseur?: string
+  medias?: ProductMedia[]
 }
 
 export type ProductMap = Record<string, Product>
