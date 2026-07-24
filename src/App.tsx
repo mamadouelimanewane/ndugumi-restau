@@ -33,6 +33,11 @@ import Livraisons from './pages/Livraisons'
 import MarchePrices from './pages/MarchePrices'
 import Abonnements from './pages/Abonnements'
 import PocketCommercial from './pages/PocketCommercial'
+import Calculator from './pages/Calculator'
+import Simulateur from './pages/Simulateur'
+import Notifications from './pages/Notifications'
+import Fournisseurs from './pages/Fournisseurs'
+import Academie from './pages/Academie'
 import { useCrmStore } from './store/useCrmStore'
 
 export default function App() {
@@ -80,6 +85,11 @@ export default function App() {
           <Route path="/marche-prices" element={<MarchePrices />} />
           <Route path="/abonnements" element={<Abonnements />} />
           <Route path="/pocket" element={<PocketCommercial />} />
+          <Route path="/calculator" element={<Calculator />} />
+          <Route path="/simulateur" element={<Simulateur />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/fournisseurs" element={<Fournisseurs />} />
+          <Route path="/academie" element={<Academie />} />
           <Route path="/taches" element={<Tasks />} />
           <Route path="/rapports" element={<Reports />} />
           <Route path="/agents" element={<Agents />} />

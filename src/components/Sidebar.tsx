@@ -30,6 +30,11 @@ const links = [
   { to: '/livraisons', label: 'Livraisons & Tournées', icon: '🚛', end: false },
   { to: '/marche-prices', label: 'Baromètre Prix Dakar', icon: '📊', end: false },
   { to: '/abonnements', label: 'Abonnements Récurrents', icon: '🔄', end: false },
+  { to: '/calculator', label: 'Calculateur Marge Plat', icon: '🍲', end: false },
+  { to: '/simulateur', label: 'Simulateur ROI Client', icon: '🧮', end: false },
+  { to: '/notifications', label: 'Alertes Quotidiennes', icon: '🔔', end: false },
+  { to: '/fournisseurs', label: 'Achats Fournisseurs', icon: '🏢', end: false },
+  { to: '/academie', label: 'Académie Commerciale', icon: '🎓', end: false },
   { to: '/api', label: 'Développeur & API', icon: '⚙️', end: false },
 ]
 
