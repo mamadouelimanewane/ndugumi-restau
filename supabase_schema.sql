@@ -16,3 +16,36 @@ CREATE TABLE IF NOT EXISTS public.app_state (
 -- uniquement). anon/authenticated n'ont donc aucun accès direct, par conception.
 ALTER TABLE public.app_state ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.app_state FROM anon, authenticated;
+
+-- 3. Rate-limiting des endpoints IA publics (api/ai-*.ts), pour limiter l'abus de coûts DeepSeek.
+-- Utilisée uniquement côté serveur via la clé service_role (RPC increment_rate_limit).
+CREATE TABLE IF NOT EXISTS public.api_rate_limits (
+  key TEXT PRIMARY KEY,
+  window_start TIMESTAMPTZ NOT NULL,
+  count INT NOT NULL DEFAULT 1
+);
+
+ALTER TABLE public.api_rate_limits ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.api_rate_limits FROM anon, authenticated;
+
+CREATE OR REPLACE FUNCTION public.increment_rate_limit(p_key TEXT, p_window_start TIMESTAMPTZ)
+RETURNS INT
+LANGUAGE plpgsql
+AS $func$
+DECLARE
+  new_count INT;
+BEGIN
+  INSERT INTO public.api_rate_limits (key, window_start, count)
+  VALUES (p_key, p_window_start, 1)
+  ON CONFLICT (key) DO UPDATE SET count = public.api_rate_limits.count + 1
+  RETURNING count INTO new_count;
+
+  IF random() < 0.01 THEN
+    DELETE FROM public.api_rate_limits WHERE window_start < now() - interval '2 days';
+  END IF;
+
+  RETURN new_count;
+END;
+$func$;
+
+REVOKE ALL ON FUNCTION public.increment_rate_limit(TEXT, TIMESTAMPTZ) FROM anon, authenticated;

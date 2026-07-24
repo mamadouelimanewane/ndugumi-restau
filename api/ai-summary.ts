@@ -1,7 +1,47 @@
-// Note : le code d'appel DeepSeek est dupliqué dans chacun des 3 fichiers api/ai-*.ts
-// (plutôt qu'importé d'un fichier partagé) car Vercel exclut du déploiement tout fichier/dossier
-// préfixé par "_" dans /api — un import vers un tel fichier partagé fait planter la fonction
-// au chargement du module (constaté en production : FUNCTION_INVOCATION_FAILED).
+// Note : le code d'appel DeepSeek (et le rate-limiter ci-dessous) est dupliqué dans chacun des
+// 4 fichiers api/ai-*.ts (plutôt qu'importé d'un fichier partagé) car Vercel exclut du déploiement
+// tout fichier/dossier préfixé par "_" dans /api — un import vers un tel fichier partagé fait
+// planter la fonction au chargement du module (constaté en production : FUNCTION_INVOCATION_FAILED).
+
+import { createClient } from '@supabase/supabase-js'
+
+// Endpoint IA public sans authentification : protège contre l'abus de coûts DeepSeek
+// (pas contre une fuite de données, ces routes ne lisent/écrivent aucune donnée sensible).
+async function checkRateLimit(req: any, res: any, endpoint: string): Promise<boolean> {
+  const url = process.env.SUPABASE_URL
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) return true // pas de DB dispo : on laisse passer plutôt que de casser la fonctionnalité
+
+  try {
+    const ip = String(req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown').split(',')[0].trim()
+    const now = Date.now()
+    const minuteBucket = Math.floor(now / 60000)
+    const dayBucket = Math.floor(now / 86400000)
+    const supabase = createClient(url, key)
+
+    const { data: ipCount } = await supabase.rpc('increment_rate_limit', {
+      p_key: `${endpoint}:ip:${ip}:${minuteBucket}`,
+      p_window_start: new Date(minuteBucket * 60000).toISOString(),
+    })
+    if ((ipCount ?? 0) > 15) {
+      res.status(429).json({ error: 'Trop de requêtes IA depuis cette connexion, réessayez dans une minute.' })
+      return false
+    }
+
+    const { data: dayCount } = await supabase.rpc('increment_rate_limit', {
+      p_key: `${endpoint}:day:${dayBucket}`,
+      p_window_start: new Date(dayBucket * 86400000).toISOString(),
+    })
+    if ((dayCount ?? 0) > 300) {
+      res.status(429).json({ error: 'Quota IA quotidien atteint pour cette fonctionnalité, réessayez demain.' })
+      return false
+    }
+  } catch (e) {
+    console.error('Erreur rate-limit (ignorée, requête autorisée)', e)
+  }
+
+  return true
+}
 
 interface ChatMessage {
   role: 'system' | 'user'
@@ -70,6 +110,8 @@ export default async function handler(req: any, res: any) {
     res.status(405).json({ error: 'Méthode non autorisée' })
     return
   }
+
+  if (!(await checkRateLimit(req, res, 'ai-summary'))) return
 
   try {
     const body = req.body as RequestBody
