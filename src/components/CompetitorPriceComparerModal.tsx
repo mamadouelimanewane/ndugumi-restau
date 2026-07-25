@@ -1,4 +1,6 @@
 import { useState } from 'react'
+import { useCrmStore } from '../store/useCrmStore'
+import { extractTextFromImage } from '../utils/ocr'
 
 interface CompetitorPriceComparerModalProps {
   etablissement: string
@@ -6,9 +8,11 @@ interface CompetitorPriceComparerModalProps {
 }
 
 export default function CompetitorPriceComparerModal({ etablissement, onClose }: CompetitorPriceComparerModalProps) {
+  const products = useCrmStore((s) => s.products)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null)
   const [comparisonResult, setComparisonResult] = useState<{
     fournisseurConcurrent: string
     lignes: { produit: string; prixConcurrent: number; prixNdugumi: number; economie: number }[]
@@ -24,25 +28,34 @@ export default function CompetitorPriceComparerModal({ etablissement, onClose }:
     setComparisonResult(null)
   }
 
-  function handleAnalyzeReceipt() {
+  async function handleAnalyzeReceipt() {
     if (!selectedFile) return
     setIsAnalyzing(true)
+    setAnalyzeError(null)
 
-    // Simulation d'extraction Vision IA des prix concurrents
-    setTimeout(() => {
-      setComparisonResult({
-        fournisseurConcurrent: 'Grossiste Marché Tilène / Concurrent',
-        lignes: [
-          { produit: 'Riz brisé parfumé 25kg', prixConcurrent: 16500, prixNdugumi: 15000, economie: 1500 },
-          { produit: 'Huile végétale bidon 20L', prixConcurrent: 24000, prixNdugumi: 22000, economie: 2000 },
-          { produit: 'Oignon sac 25kg', prixConcurrent: 10500, prixNdugumi: 9000, economie: 1500 },
-          { produit: 'Poulet entier carton (10 pcs)', prixConcurrent: 34500, prixNdugumi: 32000, economie: 2500 },
-        ],
-        economieTotaleFCFA: 7500,
-        pourcentageEconomie: 8.7,
+    try {
+      const ocrText = await extractTextFromImage(selectedFile)
+      const ndugumiProducts = Object.values(products).map((p) => ({
+        nom: p.nom,
+        prixUnitaire: p.prixUnitaire,
+        unite: p.unite,
+      }))
+      const res = await fetch('/api/ai-price-compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ocrText, ndugumiProducts }),
       })
+      const data = await res.json()
+      if (!res.ok) {
+        setAnalyzeError(data.error || "Erreur lors de l'analyse de la photo.")
+        return
+      }
+      setComparisonResult(data)
+    } catch (e: any) {
+      setAnalyzeError(e?.message || 'Impossible de lire cette photo.')
+    } finally {
       setIsAnalyzing(false)
-    }, 2000)
+    }
   }
 
   return (
@@ -79,8 +92,12 @@ export default function CompetitorPriceComparerModal({ etablissement, onClose }:
 
         {selectedFile && !comparisonResult && (
           <button className="btn primary" onClick={handleAnalyzeReceipt} disabled={isAnalyzing}>
-            {isAnalyzing ? '🔍 Analyse des prix par Vision IA...' : '✨ Comparer les Prix par IA'}
+            {isAnalyzing ? '🔍 Lecture du texte puis analyse des prix par IA...' : '✨ Comparer les Prix par IA'}
           </button>
+        )}
+
+        {analyzeError && (
+          <div style={{ color: 'var(--danger, #c0392b)', fontSize: 12.5 }}>{analyzeError}</div>
         )}
 
         {!comparisonResult && (
@@ -91,6 +108,9 @@ export default function CompetitorPriceComparerModal({ etablissement, onClose }:
 
         {comparisonResult && (
           <div style={{ background: '#f8fafc', padding: 16, borderRadius: 8, border: '1px solid var(--border)' }}>
+            <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '0 0 12px' }}>
+              Suggestions générées par IA (DeepSeek) à partir de la photo — à vérifier avant de les présenter au restaurant.
+            </p>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: 16, color: 'var(--primary)' }}>Résultat de l'Analyse Comparative</h3>
@@ -102,29 +122,39 @@ export default function CompetitorPriceComparerModal({ etablissement, onClose }:
               </div>
             </div>
 
-            <table className="data-table" style={{ fontSize: 12 }}>
-              <thead>
-                <tr>
-                  <th>Produit</th>
-                  <th>Prix Concurrence</th>
-                  <th>Prix NDUGUMi</th>
-                  <th>Économie / Unité</th>
-                </tr>
-              </thead>
-              <tbody>
-                {comparisonResult.lignes.map((l, i) => (
-                  <tr key={i}>
-                    <td><strong>{l.produit}</strong></td>
-                    <td style={{ color: '#991b1b', fontWeight: 600 }}>{l.prixConcurrent.toLocaleString()} FCFA</td>
-                    <td style={{ color: '#047857', fontWeight: 700 }}>{l.prixNdugumi.toLocaleString()} FCFA</td>
-                    <td style={{ color: '#047857', fontWeight: 800 }}>-{l.economie.toLocaleString()} FCFA</td>
+            {comparisonResult.lignes.length === 0 ? (
+              <div className="empty-state">
+                Aucune ligne de prix n'a pu être identifiée avec certitude sur cette photo (qualité de l'image, ou aucun produit ne correspond au catalogue NDUGUMi). Essayez une photo plus nette ou plus rapprochée.
+              </div>
+            ) : (
+              <table className="data-table" style={{ fontSize: 12 }}>
+                <thead>
+                  <tr>
+                    <th>Produit</th>
+                    <th>Prix Concurrence</th>
+                    <th>Prix NDUGUMi</th>
+                    <th>Économie / Unité</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {comparisonResult.lignes.map((l, i) => (
+                    <tr key={i}>
+                      <td><strong>{l.produit}</strong></td>
+                      <td style={{ color: '#991b1b', fontWeight: 600 }}>{l.prixConcurrent.toLocaleString()} FCFA</td>
+                      <td style={{ color: '#047857', fontWeight: 700 }}>{l.prixNdugumi.toLocaleString()} FCFA</td>
+                      <td style={{ color: '#047857', fontWeight: 800 }}>-{l.economie.toLocaleString()} FCFA</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
 
             <div style={{ marginTop: 16, padding: 12, background: '#ecfdf5', borderRadius: 6, fontSize: 13, color: '#065f46', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span>💡 **Argument de Closing** : Pour ce restaurant, passer chez NDUGUMi représente ~<strong>{(comparisonResult.economieTotaleFCFA * 4).toLocaleString()} FCFA d'économie par mois</strong>.</span>
+              {comparisonResult.lignes.length > 0 ? (
+                <span>💡 **Argument de Closing** : Sur la base de cette facture, passer chez NDUGUMi représenterait environ <strong>{(comparisonResult.economieTotaleFCFA * 4).toLocaleString()} FCFA d'économie estimée par mois</strong> (en supposant un rythme d'achat similaire).</span>
+              ) : (
+                <span>Réessayez avec une autre photo pour obtenir un argument chiffré.</span>
+              )}
               <button className="btn small primary" onClick={onClose}>Fermer</button>
             </div>
           </div>

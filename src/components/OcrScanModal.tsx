@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { Zone } from '../types'
+import { extractTextFromImage } from '../utils/ocr'
 
 interface OcrScanModalProps {
   onClose: () => void
@@ -10,6 +11,7 @@ export default function OcrScanModal({ onClose, onApply }: OcrScanModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isScanning, setIsScanning] = useState(false)
+  const [scanError, setScanError] = useState<string | null>(null)
   const [extractedData, setExtractedData] = useState<{
     etablissement: string
     telephone: string
@@ -31,39 +33,26 @@ export default function OcrScanModal({ onClose, onApply }: OcrScanModalProps) {
   async function handleScan() {
     if (!selectedFile) return
     setIsScanning(true)
+    setScanError(null)
 
-    // Simulation d'extraction OCR Vision IA DeepSeek
-    setTimeout(() => {
-      const fileName = selectedFile.name.toLowerCase()
-      let result = {
-        etablissement: "Restaurant La Teranga Chez Awa",
-        telephone: "77 654 32 10",
-        quartier: "Médina",
-        zone: "Dakar intra-muros" as Zone,
-        tags: ["Thiéboudiène", "Plat du jour", "Fast-food local"],
+    try {
+      const ocrText = await extractTextFromImage(selectedFile)
+      const res = await fetch('/api/ai-ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ocrText }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setScanError(data.error || "Erreur lors de l'analyse de la photo.")
+        return
       }
-
-      if (fileName.includes('dibiterie') || fileName.includes('viande')) {
-        result = {
-          etablissement: "Dibiterie Mbao & Frères",
-          telephone: "78 123 45 67",
-          quartier: "Mbao",
-          zone: "Banlieue" as Zone,
-          tags: ["Dibiterie", "Mouton", "Grillades"],
-        }
-      } else if (fileName.includes('fast') || fileName.includes('burger')) {
-        result = {
-          etablissement: "Dakar Snack Express",
-          telephone: "76 987 65 43",
-          quartier: "Almadies",
-          zone: "Dakar intra-muros" as Zone,
-          tags: ["Fast-food", "Livraison", "Sandwicherie"],
-        }
-      }
-
-      setExtractedData(result)
+      setExtractedData(data)
+    } catch (e: any) {
+      setScanError(e?.message || 'Impossible de lire cette photo.')
+    } finally {
       setIsScanning(false)
-    }, 1800)
+    }
   }
 
   function handleConfirm() {
@@ -108,8 +97,12 @@ export default function OcrScanModal({ onClose, onApply }: OcrScanModalProps) {
 
         {selectedFile && !extractedData && (
           <button className="btn" onClick={handleScan} disabled={isScanning}>
-            {isScanning ? '🔍 Analyse Vision IA en cours...' : '✨ Analyser la photo par IA'}
+            {isScanning ? '🔍 Lecture du texte puis analyse IA...' : '✨ Analyser la photo par IA'}
           </button>
+        )}
+
+        {scanError && (
+          <div style={{ color: 'var(--danger, #c0392b)', fontSize: 12.5 }}>{scanError}</div>
         )}
 
         {!extractedData && (
@@ -121,6 +114,9 @@ export default function OcrScanModal({ onClose, onApply }: OcrScanModalProps) {
         {extractedData && (
           <div style={{ background: '#f8fafc', padding: 16, borderRadius: 8, border: '1px solid var(--border)' }}>
             <h3 style={{ margin: '0 0 12px 0', fontSize: 15, color: 'var(--primary)' }}>✅ Données Extraites par IA</h3>
+            <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: '0 0 12px' }}>
+              Suggestions générées par IA (DeepSeek) à partir de la photo — vérifiez et corrigez avant de valider.
+            </p>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
