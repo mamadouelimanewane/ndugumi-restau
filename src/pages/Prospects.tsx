@@ -588,7 +588,8 @@ export default function Prospects() {
               <th>Agent</th>
               <th>Relance</th>
               <th>NDUGUMi</th>
-              <th>WhatsApp</th>
+              <th>Contact (WhatsApp / Email)</th>
+              <th style={{ textAlign: 'center', width: 36 }} title="Position GPS exacte enregistrée">📍</th>
               <th style={{ textAlign: 'center', width: 120 }}>Actions</th>
             </tr>
           </thead>
@@ -612,9 +613,6 @@ export default function Prospects() {
                 </td>
                 <td>
                   {j.telephone}
-                  {j.email && (
-                    <div style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>✉️ {j.email}</div>
-                  )}
                 </td>
                 <td>{j.quartier}</td>
                 <td>
@@ -656,12 +654,13 @@ export default function Prospects() {
                     '—'
                   )}
                 </td>
-                <td>
-                  {j.whatsapp ? (
-                    <span>💬 {j.whatsapp}</span>
-                  ) : (
-                    <span style={{ color: 'var(--text-dim)' }}>—</span>
-                  )}
+                <td style={{ fontSize: 11.5 }}>
+                  {j.whatsapp && <div>💬 {j.whatsapp}</div>}
+                  {j.email && <div style={{ color: 'var(--text-dim)' }}>✉️ {j.email}</div>}
+                  {!j.whatsapp && !j.email && <span style={{ color: 'var(--text-dim)' }}>—</span>}
+                </td>
+                <td style={{ textAlign: 'center' }} title={j.exactLat && j.exactLng ? `GPS exact : ${j.exactLat.toFixed(5)}, ${j.exactLng.toFixed(5)}` : 'Position estimée par quartier'}>
+                  {j.exactLat && j.exactLng ? '📍' : <span style={{ color: 'var(--text-dim)' }}>—</span>}
                 </td>
                 <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                   <button
