@@ -1,4 +1,7 @@
 {
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
-  "crons": [{ "path": "/api/weekly-report?action=generate", "schedule": "0 8 * * 1" }]
+  "crons": [
+    { "path": "/api/weekly-report?action=generate", "schedule": "0 8 * * 1" },
+    { "path": "/api/market-prices?action=webwatch", "schedule": "0 6 * * 1" }
+  ]
 }

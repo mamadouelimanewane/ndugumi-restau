@@ -1,114 +1,286 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useCrmStore } from '../store/useCrmStore'
 import { waLinkWithText } from '../utils/phone'
+import { extractTextFromImage } from '../utils/ocr'
 
-interface MarketProductPrice {
-  id: string
-  nom: string
-  categorie: string
-  unite: string
-  prixNdugumi: number // FCFA
-  prixTilene: number // FCFA
-  prixCastors: number // FCFA
-  prixSandaga: number // FCFA
-  tendance: 'hausse' | 'baisse' | 'stable'
-  variation: string // ex: "-5%", "+8%"
-  conseilIa: string
-}
-
-const MARKET_PRICES: MarketProductPrice[] = [
-  {
-    id: 'mp-1',
-    nom: 'Riz Brisé Parfumé (Sac 50kg)',
-    categorie: 'Céréales',
-    unite: 'sac 50kg',
-    prixNdugumi: 21500,
-    prixTilene: 23000,
-    prixCastors: 22800,
-    prixSandaga: 23500,
-    tendance: 'stable',
-    variation: '0%',
-    conseilIa: 'Prix stable — Acheter selon les besoins hebdomadaires normaux.',
-  },
-  {
-    id: 'mp-2',
-    nom: 'Huile Végétale Raffinée (Bidon 20L)',
-    categorie: 'Huiles',
-    unite: 'bidon 20L',
-    prixNdugumi: 18000,
-    prixTilene: 19500,
-    prixCastors: 19200,
-    prixSandaga: 20000,
-    tendance: 'baisse',
-    variation: '-4.5%',
-    conseilIa: '🔥 opportunité : Prix au plus bas cette semaine à Tilène & Castors ! Profitez-en pour recommander aux clients de constituer des réserves.',
-  },
-  {
-    id: 'mp-3',
-    nom: 'Oignon Local Niayes (Sac 25kg)',
-    categorie: 'Légumes',
-    unite: 'sac 25kg',
-    prixNdugumi: 9000,
-    prixTilene: 10500,
-    prixCastors: 10200,
-    prixSandaga: 11000,
-    tendance: 'hausse',
-    variation: '+12%',
-    conseilIa: '⚠️ Alerte hausse : Forte demande sur le marché de Thiaroye. Le prix va augmenter la semaine prochaine.',
-  },
-  {
-    id: 'mp-4',
-    nom: 'Pomme de terre locale (Sac 25kg)',
-    categorie: 'Légumes',
-    unite: 'sac 25kg',
-    prixNdugumi: 9500,
-    prixTilene: 10800,
-    prixCastors: 10500,
-    prixSandaga: 11200,
-    tendance: 'stable',
-    variation: '+1%',
-    conseilIa: 'Prix très compétitif chez NDUGUMi par rapport aux grossistes de Castors.',
-  },
-  {
-    id: 'mp-5',
-    nom: 'Concentré de Tomate (Carton 100boîtes)',
-    categorie: 'Épicerie',
-    unite: 'carton',
-    prixNdugumi: 14500,
-    prixTilene: 16000,
-    prixCastors: 15800,
-    prixSandaga: 16500,
-    tendance: 'baisse',
-    variation: '-3%',
-    conseilIa: 'Offre promotionnelle NDUGUMi imbattable par rapport aux détaillants de Sandaga.',
-  },
+const CATEGORIES = [
+  'Céréales',
+  'Huiles',
+  'Légumes',
+  'Fruits',
+  'Viandes',
+  'Poissons',
+  'Fruits de mer',
+  'Fromagerie',
+  'Épicerie',
+  'Boissons',
+  'Combustible',
+  'Produits locaux',
+  'Autre',
 ]
 
+const SOURCES_COURANTES = ['Marché Tilène', 'Marché Castors', 'Marché Sandaga', 'Marché Thiaroye', 'Auchan.sn', 'Autre']
+
+interface MarketPriceEntry {
+  id: string
+  produit: string
+  categorie: string | null
+  prix: number
+  unite: string
+  source: string
+  methode: 'manuel' | 'photo_ocr' | 'web'
+  releve_par: string | null
+  created_at: string
+}
+
+interface ProductAnalysis {
+  produit: string
+  tendance: 'hausse' | 'baisse' | 'stable'
+  variationApprox: string
+  recoupement: string
+  conseil: string
+}
+
+const METHODE_LABELS: Record<string, string> = {
+  manuel: '✍️ Saisie manuelle',
+  photo_ocr: '📷 Photo/OCR',
+  web: '🌐 Veille web',
+}
+
 export default function MarchePrices() {
-  const [prices] = useState<MarketProductPrice[]>(MARKET_PRICES)
+  const products = useCrmStore((s) => s.products)
+  const currentAgent = useCrmStore((s) => s.currentAgent)
+
+  const [entries, setEntries] = useState<MarketPriceEntry[]>([])
+  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [categorieFilter, setCategorieFilter] = useState('')
 
-  const filtered = prices.filter((p) => {
-    if (search && !p.nom.toLowerCase().includes(search.toLowerCase())) return false
-    if (categorieFilter && p.categorie !== categorieFilter) return false
-    return true
-  })
+  const [showForm, setShowForm] = useState(false)
+  const [draftProduit, setDraftProduit] = useState('')
+  const [draftCategorie, setDraftCategorie] = useState('')
+  const [draftPrix, setDraftPrix] = useState('')
+  const [draftUnite, setDraftUnite] = useState('')
+  const [draftSource, setDraftSource] = useState('')
+  const [saving, setSaving] = useState(false)
 
-  function handleSharePriceReport(p: MarketProductPrice) {
-    const text = `📊 *BAROMÈTRE PRIX MARCHÉ DAKAR — ${p.nom.toUpperCase()}*
+  const [isScanning, setIsScanning] = useState(false)
+  const [webWatching, setWebWatching] = useState(false)
+  const [webWatchMessage, setWebWatchMessage] = useState<string | null>(null)
+  const [scanError, setScanError] = useState<string | null>(null)
+  const [scanLines, setScanLines] = useState<{ produit: string; prix: string; unite: string; categorie: string }[] | null>(null)
+  const [scanSource, setScanSource] = useState('')
 
-📍 *Comparatif de cette semaine* :
-• *NDUGUMi Direct* : ${p.prixNdugumi.toLocaleString('fr-FR')} FCFA / ${p.unite} 💰
-• Marché Tilène : ${p.prixTilene.toLocaleString('fr-FR')} FCFA
-• Marché Castors : ${p.prixCastors.toLocaleString('fr-FR')} FCFA
-• Marché Sandaga : ${p.prixSandaga.toLocaleString('fr-FR')} FCFA
+  const [analyzing, setAnalyzing] = useState(false)
+  const [analysis, setAnalysis] = useState<ProductAnalysis[] | null>(null)
+  const [analysisError, setAnalysisError] = useState<string | null>(null)
 
-💡 *Économie NDUGUMi* : Économisez jusqu'à ${(p.prixSandaga - p.prixNdugumi).toLocaleString('fr-FR')} FCFA par ${p.unite} + livraison offerte !
+  async function loadEntries() {
+    try {
+      const res = await fetch('/api/market-prices')
+      const data = await res.json()
+      setEntries(data.entries ?? [])
+    } catch (e) {
+      console.error('Erreur chargement relevés de prix', e)
+    } finally {
+      setLoading(false)
+    }
+  }
 
-💡 *Conseil de nos experts* : ${p.conseilIa}
+  useEffect(() => {
+    loadEntries()
+  }, [])
 
-📲 Commandez directement via NDUGUMi pour verrouiller vos prix !`
+  const ndugumiProductNames = useMemo(() => Object.values(products).map((p) => p.nom), [products])
 
+  const filtered = useMemo(() => {
+    return entries.filter((e) => {
+      if (search && !e.produit.toLowerCase().includes(search.toLowerCase())) return false
+      if (categorieFilter && e.categorie !== categorieFilter) return false
+      return true
+    })
+  }, [entries, search, categorieFilter])
+
+  async function handleAddEntry() {
+    const prix = Number(draftPrix)
+    if (!draftProduit.trim() || !draftUnite.trim() || !draftSource.trim() || !Number.isFinite(prix) || prix <= 0) {
+      alert('Produit, prix (> 0), unité et source sont obligatoires.')
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await fetch('/api/market-prices', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          produit: draftProduit.trim(),
+          categorie: draftCategorie || null,
+          prix,
+          unite: draftUnite.trim(),
+          source: draftSource.trim(),
+          methode: 'manuel',
+          relevePar: currentAgent || '',
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.error || "Erreur lors de l'enregistrement.")
+        return
+      }
+      setDraftProduit('')
+      setDraftCategorie('')
+      setDraftPrix('')
+      setDraftUnite('')
+      setDraftSource('')
+      setShowForm(false)
+      await loadEntries()
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleScanFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsScanning(true)
+    setScanError(null)
+    setScanLines(null)
+    try {
+      const ocrText = await extractTextFromImage(file)
+      const res = await fetch('/api/market-prices?action=ocr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ocrText }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setScanError(data.error || "Erreur lors de l'analyse de la photo.")
+        return
+      }
+      if (!data.lignes || data.lignes.length === 0) {
+        setScanError("Aucun prix n'a pu être identifié sur cette photo. Essayez une photo plus nette.")
+        return
+      }
+      setScanLines(
+        data.lignes.map((l: any) => ({
+          produit: l.produit,
+          prix: String(l.prix),
+          unite: l.unite,
+          categorie: CATEGORIES.includes(l.categorie) ? l.categorie : '',
+        }))
+      )
+      setScanSource(data.sourceProbable || '')
+    } catch (err: any) {
+      setScanError(err?.message || 'Impossible de lire cette photo.')
+    } finally {
+      setIsScanning(false)
+    }
+  }
+
+  async function handleSaveScanLines() {
+    if (!scanLines || !scanSource.trim()) {
+      alert('Indiquez la source (marché/enseigne) avant d\'enregistrer.')
+      return
+    }
+    setSaving(true)
+    try {
+      let count = 0
+      for (const line of scanLines) {
+        const prix = Number(line.prix)
+        if (!line.produit.trim() || !Number.isFinite(prix) || prix <= 0) continue
+        const res = await fetch('/api/market-prices', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            produit: line.produit.trim(),
+            categorie: line.categorie || null,
+            prix,
+            unite: line.unite || 'unité',
+            source: scanSource.trim(),
+            methode: 'photo_ocr',
+            relevePar: currentAgent || '',
+          }),
+        })
+        if (res.ok) count++
+      }
+      setScanLines(null)
+      setScanSource('')
+      await loadEntries()
+      alert(`${count} relevé(s) enregistré(s).`)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleWebWatch() {
+    setWebWatching(true)
+    setWebWatchMessage(null)
+    try {
+      const res = await fetch('/api/market-prices?action=webwatch')
+      const data = await res.json()
+      if (!res.ok) {
+        setWebWatchMessage(data.error || 'Erreur lors de la veille web.')
+        return
+      }
+      const found = (data.results || []).filter((r: any) => r.ok).length
+      const total = (data.results || []).length
+      setWebWatchMessage(`${found}/${total} prix trouvés et enregistrés via la veille web (Auchan.sn + sources fiables).`)
+      await loadEntries()
+    } catch (e: any) {
+      setWebWatchMessage(e?.message || 'Impossible de contacter le serveur.')
+    } finally {
+      setWebWatching(false)
+    }
+  }
+
+  async function handleDeleteEntry(id: string) {
+    if (!confirm('Supprimer ce relevé ?')) return
+    try {
+      const res = await fetch(`/api/market-prices?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
+      if (!res.ok) {
+        alert('Erreur lors de la suppression.')
+        return
+      }
+      await loadEntries()
+    } catch {
+      alert('Impossible de contacter le serveur.')
+    }
+  }
+
+  async function handleAnalyze() {
+    if (filtered.length === 0) {
+      alert('Aucun relevé à analyser pour ces filtres.')
+      return
+    }
+    setAnalyzing(true)
+    setAnalysisError(null)
+    try {
+      const res = await fetch('/api/market-prices?action=analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ entries: filtered }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setAnalysisError(data.error || "Erreur lors de l'analyse.")
+        return
+      }
+      setAnalysis(data.produits)
+    } catch (e: any) {
+      setAnalysisError(e?.message || 'Impossible de contacter le serveur.')
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  function handleShareAnalysis(a: ProductAnalysis) {
+    const text = `📊 *BAROMÈTRE PRIX MARCHÉ DAKAR — ${a.produit.toUpperCase()}*
+
+📈 Tendance : ${a.tendance} ${a.variationApprox ? `(${a.variationApprox})` : ''}
+🔍 ${a.recoupement}
+💡 ${a.conseil}
+
+Données basées sur les relevés terrain réels de l'équipe NDUGUMi.`
     const link = waLinkWithText('', text)
     if (link) window.open(link, '_blank')
   }
@@ -117,96 +289,239 @@ export default function MarchePrices() {
     <div>
       <div className="page-header">
         <div>
-          <h1 className="page-title">📊 Baromètre des Prix des Marchés de Dakar</h1>
+          <h1 className="page-title">📊 Baromètre des Prix — Marchés & Supermarchés Dakar</h1>
           <p className="page-subtitle">
-            Relevés hebdomadaires des cours aux marchés Tilène, Castors, Sandaga et conseils d'achat IA
+            Relevés réels du terrain (saisie manuelle + photo/OCR) et analyse de tendances par IA
           </p>
         </div>
-      </div>
-
-      {/* Bannière de conseils IA */}
-      <div className="panel" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', color: '#fff', marginBottom: 20 }}>
-        <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
-          <span style={{ fontSize: 32 }}>💡</span>
-          <div>
-            <h3 style={{ color: '#fff', margin: 0, fontSize: 15 }}>Intelligence Marché Dakar NDUGUMi</h3>
-            <p style={{ fontSize: 12.5, color: '#94a3b8', margin: '4px 0 0 0' }}>
-              Nos agents effectuent des relevés chaque lundi matin à Tilène, Castors et Sandaga. Utilisez ces données pour conseiller vos clients restaurateurs sur le meilleur moment pour passer commande.
-            </p>
-          </div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn secondary" onClick={handleWebWatch} disabled={webWatching} title="Recherche les prix actuels sur Auchan.sn et le web via IA (Perplexity)">
+            {webWatching ? '🌐 Recherche en cours...' : '🌐 Lancer la veille web IA'}
+          </button>
+          <label className="btn secondary" style={{ cursor: 'pointer', margin: 0 }}>
+            {isScanning ? '🔍 Lecture en cours...' : '📷 Scanner une étiquette/ticket'}
+            <input type="file" accept="image/*" style={{ display: 'none' }} onChange={handleScanFile} disabled={isScanning} />
+          </label>
+          <button className="btn" onClick={() => setShowForm((v) => !v)}>
+            {showForm ? 'Fermer' : '+ Ajouter un relevé'}
+          </button>
         </div>
       </div>
 
-      {/* Filtres */}
+      {webWatchMessage && (
+        <div className="panel" style={{ marginBottom: 16, fontSize: 13 }}>
+          {webWatchMessage}
+        </div>
+      )}
+
+      {scanError && (
+        <div className="panel" style={{ borderLeft: '4px solid var(--danger, #c0392b)', marginBottom: 16 }}>
+          {scanError}
+        </div>
+      )}
+
+      {scanLines && (
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <h3>Relevés détectés sur la photo — vérifiez avant d'enregistrer</h3>
+          <p style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>
+            Suggestions générées par IA (OCR + DeepSeek) à partir de la photo — corrigez si besoin.
+          </p>
+          <div className="field-row">
+            <label>Source (marché / enseigne)</label>
+            <select value={SOURCES_COURANTES.includes(scanSource) ? scanSource : 'Autre'} onChange={(e) => setScanSource(e.target.value === 'Autre' ? '' : e.target.value)}>
+              {SOURCES_COURANTES.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            {!SOURCES_COURANTES.includes(scanSource) && (
+              <input type="text" placeholder="Préciser la source" value={scanSource} onChange={(e) => setScanSource(e.target.value)} style={{ marginTop: 6 }} />
+            )}
+          </div>
+          {scanLines.map((line, i) => (
+            <div key={i} style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                value={line.produit}
+                onChange={(e) => setScanLines((prev) => prev!.map((l, j) => (j === i ? { ...l, produit: e.target.value } : l)))}
+                style={{ flex: '1 1 180px' }}
+                placeholder="Produit"
+              />
+              <input
+                type="number"
+                value={line.prix}
+                onChange={(e) => setScanLines((prev) => prev!.map((l, j) => (j === i ? { ...l, prix: e.target.value } : l)))}
+                style={{ width: 110 }}
+                placeholder="Prix"
+              />
+              <input
+                type="text"
+                value={line.unite}
+                onChange={(e) => setScanLines((prev) => prev!.map((l, j) => (j === i ? { ...l, unite: e.target.value } : l)))}
+                style={{ width: 110 }}
+                placeholder="Unité"
+              />
+              <select
+                value={line.categorie}
+                onChange={(e) => setScanLines((prev) => prev!.map((l, j) => (j === i ? { ...l, categorie: e.target.value } : l)))}
+                style={{ width: 140 }}
+              >
+                <option value="">Catégorie…</option>
+                {CATEGORIES.map((c) => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+              <button
+                className="btn secondary small"
+                onClick={() => setScanLines((prev) => prev!.filter((_, j) => j !== i))}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button className="btn" onClick={handleSaveScanLines} disabled={saving}>
+              {saving ? 'Enregistrement…' : `Enregistrer ces ${scanLines.length} relevé(s)`}
+            </button>
+            <button className="btn secondary" onClick={() => setScanLines(null)}>Annuler</button>
+          </div>
+        </div>
+      )}
+
+      {showForm && (
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <h3>Nouveau relevé de prix</h3>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <div className="field-row" style={{ flex: '1 1 200px' }}>
+              <label>Produit</label>
+              <input type="text" list="ndugumi-products" value={draftProduit} onChange={(e) => setDraftProduit(e.target.value)} placeholder="Ex : Riz brisé parfumé" />
+              <datalist id="ndugumi-products">
+                {ndugumiProductNames.map((n) => <option key={n} value={n} />)}
+              </datalist>
+            </div>
+            <div className="field-row" style={{ flex: '1 1 140px' }}>
+              <label>Catégorie</label>
+              <select value={draftCategorie} onChange={(e) => setDraftCategorie(e.target.value)}>
+                <option value="">Choisir…</option>
+                {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div className="field-row" style={{ flex: '1 1 100px' }}>
+              <label>Prix (FCFA)</label>
+              <input type="number" value={draftPrix} onChange={(e) => setDraftPrix(e.target.value)} placeholder="Ex : 15000" />
+            </div>
+            <div className="field-row" style={{ flex: '1 1 120px' }}>
+              <label>Unité</label>
+              <input type="text" value={draftUnite} onChange={(e) => setDraftUnite(e.target.value)} placeholder="Ex : sac 25kg" />
+            </div>
+            <div className="field-row" style={{ flex: '1 1 160px' }}>
+              <label>Source</label>
+              <input type="text" list="sources-courantes" value={draftSource} onChange={(e) => setDraftSource(e.target.value)} placeholder="Ex : Marché Tilène" />
+              <datalist id="sources-courantes">
+                {SOURCES_COURANTES.map((s) => <option key={s} value={s} />)}
+              </datalist>
+            </div>
+          </div>
+          <button className="btn" style={{ marginTop: 10 }} onClick={handleAddEntry} disabled={saving}>
+            {saving ? 'Enregistrement…' : 'Enregistrer le relevé'}
+          </button>
+        </div>
+      )}
+
+      <div className="panel" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', color: '#fff', marginBottom: 20 }}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+            <span style={{ fontSize: 32 }}>🤖</span>
+            <div>
+              <h3 style={{ color: '#fff', margin: 0, fontSize: 15 }}>Analyse & tendances IA</h3>
+              <p style={{ fontSize: 12.5, color: '#94a3b8', margin: '4px 0 0 0' }}>
+                Basée uniquement sur les {filtered.length} relevé(s) réel(s) ci-dessous (jamais de données inventées).
+              </p>
+            </div>
+          </div>
+          <button className="btn primary" onClick={handleAnalyze} disabled={analyzing || filtered.length === 0}>
+            {analyzing ? 'Analyse en cours…' : '✨ Analyser les tendances'}
+          </button>
+        </div>
+      </div>
+
+      {analysisError && (
+        <div className="panel" style={{ borderLeft: '4px solid var(--danger, #c0392b)', marginBottom: 16 }}>
+          {analysisError}
+        </div>
+      )}
+
+      {analysis && analysis.length > 0 && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 16, marginBottom: 20 }}>
+          {analysis.map((a) => (
+            <div key={a.produit} className="panel" style={{ margin: 0 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <strong>{a.produit}</strong>
+                <span>{a.tendance === 'hausse' ? '📈' : a.tendance === 'baisse' ? '📉' : '➡️'} {a.variationApprox}</span>
+              </div>
+              <p style={{ fontSize: 12.5, marginTop: 8 }}>{a.recoupement}</p>
+              <p style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>💡 {a.conseil}</p>
+              <button
+                className="btn secondary small"
+                style={{ color: '#25d366', borderColor: '#25d366', fontWeight: 700 }}
+                onClick={() => handleShareAnalysis(a)}
+              >
+                📲 Partager WhatsApp
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="filters-bar" style={{ marginBottom: 16 }}>
         <input
           type="text"
-          placeholder="Rechercher un produit (ex: Riz, Huile, Oignon...)"
+          placeholder="Rechercher un produit…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
         <select value={categorieFilter} onChange={(e) => setCategorieFilter(e.target.value)}>
           <option value="">Toutes les catégories</option>
-          <option value="Céréales">Céréales</option>
-          <option value="Huiles">Huiles</option>
-          <option value="Légumes">Légumes</option>
-          <option value="Épicerie">Épicerie</option>
+          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
 
-      {/* Tableau comparatif des prix */}
       <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
         <table className="data-table">
           <thead>
             <tr>
-              <th>Produit & Catégorie</th>
-              <th>Prix NDUGUMi (Livré)</th>
-              <th>Marché Tilène</th>
-              <th>Marché Castors</th>
-              <th>Marché Sandaga</th>
-              <th>Tendance & Économie</th>
-              <th style={{ textAlign: 'center', width: 180 }}>Action</th>
+              <th>Produit</th>
+              <th>Catégorie</th>
+              <th>Prix</th>
+              <th>Source</th>
+              <th>Méthode</th>
+              <th>Relevé par</th>
+              <th>Date</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((p) => {
-              const maxMarche = Math.max(p.prixTilene, p.prixCastors, p.prixSandaga)
-              const economie = maxMarche - p.prixNdugumi
-
-              return (
-                <tr key={p.id}>
+            {loading ? (
+              <tr><td colSpan={8} className="empty-state">Chargement…</td></tr>
+            ) : filtered.length === 0 ? (
+              <tr><td colSpan={8} className="empty-state">Aucun relevé pour l'instant. Ajoutez-en un ci-dessus ou scannez une photo.</td></tr>
+            ) : (
+              filtered.slice(0, 200).map((e) => (
+                <tr key={e.id}>
+                  <td><strong>{e.produit}</strong></td>
+                  <td>{e.categorie || '—'}</td>
+                  <td style={{ fontWeight: 700 }}>{e.prix.toLocaleString('fr-FR')} FCFA <span style={{ fontWeight: 400, fontSize: 11, color: 'var(--text-dim)' }}>/ {e.unite}</span></td>
+                  <td>{e.source}</td>
+                  <td style={{ fontSize: 11.5 }}>{METHODE_LABELS[e.methode] || e.methode}</td>
+                  <td>{e.releve_par || '—'}</td>
+                  <td style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>{new Date(e.created_at).toLocaleDateString('fr-FR')}</td>
                   <td>
-                    <strong>{p.nom}</strong>
-                    <div style={{ fontSize: 11, color: 'var(--text-dim)' }}>Unité : {p.unite}</div>
-                  </td>
-                  <td>
-                    <span style={{ fontSize: 15, fontWeight: 800, color: '#16a34a', background: '#f0fdf4', padding: '2px 6px', borderRadius: 4 }}>
-                      {p.prixNdugumi.toLocaleString('fr-FR')} FCFA
-                    </span>
-                  </td>
-                  <td style={{ fontSize: 12.5 }}>{p.prixTilene.toLocaleString('fr-FR')} FCFA</td>
-                  <td style={{ fontSize: 12.5 }}>{p.prixCastors.toLocaleString('fr-FR')} FCFA</td>
-                  <td style={{ fontSize: 12.5 }}>{p.prixSandaga.toLocaleString('fr-FR')} FCFA</td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span>{p.tendance === 'hausse' ? '📈' : p.tendance === 'baisse' ? '📉' : '➡️'}</span>
-                      <strong style={{ color: '#047857', fontSize: 12 }}>
-                        -{economie.toLocaleString('fr-FR')} FCFA/unité
-                      </strong>
-                    </div>
-                  </td>
-                  <td style={{ textAlign: 'center' }}>
-                    <button
-                      className="btn secondary small"
-                      style={{ padding: '4px 8px', fontSize: 11, color: '#25d366', borderColor: '#25d366', fontWeight: 700 }}
-                      onClick={() => handleSharePriceReport(p)}
-                    >
-                      📲 Partager rapport WhatsApp
+                    <button className="btn secondary small" onClick={() => handleDeleteEntry(e.id)}>
+                      Supprimer
                     </button>
                   </td>
                 </tr>
-              )
-            })}
+              ))
+            )}
           </tbody>
         </table>
       </div>

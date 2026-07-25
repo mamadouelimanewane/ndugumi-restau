@@ -67,3 +67,35 @@ CREATE TABLE IF NOT EXISTS public.public_leads (
 
 ALTER TABLE public.public_leads ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.public_leads FROM anon, authenticated;
+
+-- 5. Rapports hebdomadaires générés automatiquement (Vercel Cron, api/weekly-report.ts).
+CREATE TABLE IF NOT EXISTS public.weekly_reports (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  data JSONB NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  UNIQUE (period_start)
+);
+
+ALTER TABLE public.weekly_reports ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.weekly_reports FROM anon, authenticated;
+
+-- 6. Baromètre des prix marché (saisie manuelle, photo/OCR, et veille web IA — api/market-prices.ts).
+CREATE TABLE IF NOT EXISTS public.market_prices (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  produit TEXT NOT NULL,
+  categorie TEXT,
+  prix NUMERIC NOT NULL,
+  unite TEXT NOT NULL,
+  source TEXT NOT NULL,
+  methode TEXT NOT NULL DEFAULT 'manuel', -- 'manuel' | 'photo_ocr' | 'web'
+  releve_par TEXT,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_market_prices_produit ON public.market_prices (produit);
+CREATE INDEX IF NOT EXISTS idx_market_prices_created_at ON public.market_prices (created_at);
+
+ALTER TABLE public.market_prices ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.market_prices FROM anon, authenticated;
