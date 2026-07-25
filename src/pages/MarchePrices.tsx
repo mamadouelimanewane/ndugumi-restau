@@ -41,6 +41,20 @@ interface ProductAnalysis {
   conseil: string
 }
 
+interface CompareLine {
+  source: string
+  prix: number | null
+  unite: string
+  disponibilite: 'disponible' | 'rupture' | 'non précisé'
+}
+
+interface CompareResult {
+  produit: string
+  lignes: CompareLine[]
+  citations: string[]
+  error: string | null
+}
+
 const METHODE_LABELS: Record<string, string> = {
   manuel: '✍️ Saisie manuelle',
   photo_ocr: '📷 Photo/OCR',
@@ -74,6 +88,11 @@ export default function MarchePrices() {
   const [analyzing, setAnalyzing] = useState(false)
   const [analysis, setAnalysis] = useState<ProductAnalysis[] | null>(null)
   const [analysisError, setAnalysisError] = useState<string | null>(null)
+
+  const [compareInput, setCompareInput] = useState('')
+  const [comparing, setComparing] = useState(false)
+  const [compareResults, setCompareResults] = useState<CompareResult[] | null>(null)
+  const [compareError, setCompareError] = useState<string | null>(null)
 
   async function loadEntries() {
     try {
@@ -241,6 +260,41 @@ export default function MarchePrices() {
       setWebWatchMessage(e?.message || 'Impossible de contacter le serveur.')
     } finally {
       setWebWatching(false)
+    }
+  }
+
+  async function handleCompare() {
+    const produits = compareInput
+      .split(/[,\n]/)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .slice(0, 5)
+
+    if (produits.length === 0) {
+      setCompareError('Indiquez au moins un nom de produit (séparés par une virgule ou une nouvelle ligne).')
+      return
+    }
+
+    setComparing(true)
+    setCompareError(null)
+    setCompareResults(null)
+    try {
+      const res = await fetch('/api/market-prices?action=compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ produits }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setCompareError(data.error || 'Erreur lors de la comparaison.')
+        return
+      }
+      setCompareResults(data.results ?? [])
+      await loadEntries()
+    } catch (e: any) {
+      setCompareError(e?.message || 'Impossible de contacter le serveur.')
+    } finally {
+      setComparing(false)
     }
   }
 
@@ -463,6 +517,76 @@ Données basées sur les relevés terrain réels de l'équipe NDUGUMi.`
           </button>
         </div>
       )}
+
+      <div className="panel" style={{ marginBottom: 20 }}>
+        <h3 style={{ margin: '0 0 4px' }}>🔍 Comparer un ou plusieurs produits (IA)</h3>
+        <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 12px' }}>
+          Tapez un ou plusieurs produits (séparés par une virgule ou une nouvelle ligne, 5 max) — Perplexity
+          cherche le prix et la disponibilité sur plusieurs sources (Auchan.sn, autres sites, marchés de Dakar)
+          et affiche un comparatif. Chaque prix trouvé est aussi enregistré dans l'historique ci-dessous.
+        </p>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+          <textarea
+            value={compareInput}
+            onChange={(e) => setCompareInput(e.target.value)}
+            placeholder={'Ex : Riz brisé parfumé, Huile végétale\nou un produit par ligne'}
+            rows={2}
+            style={{ flex: '1 1 320px', minWidth: 240, resize: 'vertical' }}
+          />
+          <button className="btn primary" onClick={handleCompare} disabled={comparing}>
+            {comparing ? 'Recherche en cours…' : '🌐 Comparer les prix'}
+          </button>
+        </div>
+
+        {compareError && (
+          <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--danger, #c0392b)' }}>{compareError}</div>
+        )}
+
+        {compareResults && compareResults.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 16 }}>
+            {compareResults.map((r) => {
+              const prixValides = r.lignes.filter((l) => l.prix !== null)
+              const minPrix = prixValides.length > 0 ? Math.min(...prixValides.map((l) => l.prix!)) : null
+              return (
+                <div key={r.produit} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
+                  <strong>{r.produit}</strong>
+                  {r.error ? (
+                    <p style={{ fontSize: 12.5, color: 'var(--danger, #c0392b)', margin: '8px 0 0' }}>{r.error}</p>
+                  ) : r.lignes.length === 0 ? (
+                    <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '8px 0 0' }}>
+                      Aucune information fiable trouvée pour ce produit.
+                    </p>
+                  ) : (
+                    <table className="data-table" style={{ marginTop: 8 }}>
+                      <thead>
+                        <tr>
+                          <th>Source</th>
+                          <th>Prix</th>
+                          <th>Disponibilité</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {r.lignes.map((l, i) => (
+                          <tr key={i}>
+                            <td>{l.source}</td>
+                            <td style={{ fontWeight: 700, color: l.prix === minPrix ? 'var(--success, #1e8e3e)' : undefined }}>
+                              {l.prix !== null ? `${l.prix.toLocaleString('fr-FR')} FCFA${l.unite ? ` / ${l.unite}` : ''}` : '—'}
+                              {l.prix === minPrix && prixValides.length > 1 ? ' 🏆' : ''}
+                            </td>
+                            <td style={{ fontSize: 12 }}>
+                              {l.disponibilite === 'disponible' ? '✅ Disponible' : l.disponibilite === 'rupture' ? '❌ Rupture' : '— Non précisé'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       <div className="panel" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', color: '#fff', marginBottom: 20 }}>
         <div style={{ display: 'flex', gap: 14, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>

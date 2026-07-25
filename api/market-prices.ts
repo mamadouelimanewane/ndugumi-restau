@@ -294,6 +294,76 @@ async function handleWebWatch(req: any, res: any) {
   res.status(200).json({ results, total: WEB_WATCH_PRODUCTS.length, processed: batch.length })
 }
 
+const MAX_COMPARE_PRODUCTS = 5
+
+async function compareOneProduct(supabase: ReturnType<typeof getAdminClient>, produit: string) {
+  try {
+    const question = `Je cherche à comparer le prix et la disponibilité du produit "${produit}" à Dakar, Sénégal, sur PLUSIEURS sources différentes (pas une seule) : Auchan.sn, d'autres supermarchés en ligne sénégalais, et si possible une indication sur les marchés locaux de Dakar (Tilène, Castors, Sandaga). Pour chaque source où tu trouves une information, donne le prix en FCFA, l'unité/format vendu, et si le produit semble disponible ou en rupture. Si tu ne trouves qu'une seule source fiable, donne-la quand même. Ne donne que des informations réellement trouvées, n'invente aucun prix.`
+    const { content, citations } = await callPerplexity(question)
+
+    const extractPrompt = `Voici le résultat d'une recherche web comparant les prix du produit "${produit}" à Dakar :
+"""
+${content.slice(0, 2200)}
+"""
+Réponds UNIQUEMENT en JSON avec la clé "lignes", un tableau d'objets — UNE ligne par source/prix distinct
+mentionné dans le texte ci-dessus (peut être 1 seule ligne si une seule source est trouvée, ou plusieurs) :
+{"source": string (nom du site/enseigne/marché mentionné), "prix": number ou null si aucun prix chiffré pour
+cette source, "unite": string (ex: "kg", "sac 25kg", "unité"), "disponibilite": "disponible"|"rupture"|"non précisé"}
+N'invente aucune ligne ni aucun prix qui ne soit pas explicitement mentionné dans le texte ci-dessus.`
+    const raw = await callDeepSeek([{ role: 'user', content: extractPrompt }], 500)
+    const parsed = safeJsonParse(raw) as {
+      lignes?: { source?: string; prix?: number | null; unite?: string; disponibilite?: string }[]
+    }
+
+    const lignes = (parsed.lignes ?? [])
+      .filter((l) => l.source)
+      .map((l) => ({
+        source: l.source!,
+        prix: typeof l.prix === 'number' && l.prix > 0 ? l.prix : null,
+        unite: l.unite || '',
+        disponibilite: (['disponible', 'rupture'].includes(l.disponibilite || '') ? l.disponibilite : 'non précisé') as 'disponible' | 'rupture' | 'non précisé',
+      }))
+
+    // Enregistre chaque prix chiffré trouvé comme relevé réel (même logique que la veille web
+    // programmée), pour enrichir l'historique du Baromètre Prix avec ces recherches ponctuelles.
+    for (const l of lignes) {
+      if (!l.prix) continue
+      await supabase.from('market_prices').insert({
+        produit,
+        categorie: null,
+        prix: l.prix,
+        unite: l.unite || 'unité',
+        source: `${l.source} (recherche IA)`,
+        methode: 'web',
+        releve_par: 'Système (Perplexity)',
+      })
+    }
+
+    return { produit, lignes, citations, error: null }
+  } catch (e: any) {
+    return { produit, lignes: [], citations: [], error: e?.message || 'Erreur inconnue' }
+  }
+}
+
+async function handleCompare(req: any, res: any) {
+  if (!(await checkRateLimit(req, res, 'market-prices-compare', 150))) return
+
+  const body = req.body as { produits?: string[] }
+  const produits = (body.produits || [])
+    .map((p) => (typeof p === 'string' ? p.trim() : ''))
+    .filter(Boolean)
+    .slice(0, MAX_COMPARE_PRODUCTS)
+
+  if (produits.length === 0) {
+    res.status(400).json({ error: 'Indiquez au moins un nom de produit.' })
+    return
+  }
+
+  const supabase = getAdminClient()
+  const results = await Promise.all(produits.map((p) => compareOneProduct(supabase, p)))
+  res.status(200).json({ results })
+}
+
 async function handleOcr(req: any, res: any) {
   if (!(await checkRateLimit(req, res, 'market-prices-ocr'))) return
 
@@ -381,6 +451,7 @@ export default async function handler(req: any, res: any) {
 
     if (req.method === 'POST' && action === 'ocr') return await handleOcr(req, res)
     if (req.method === 'POST' && action === 'analyze') return await handleAnalyze(req, res)
+    if (req.method === 'POST' && action === 'compare') return await handleCompare(req, res)
     if (req.method === 'GET' && action === 'webwatch') return await handleWebWatch(req, res)
 
     const supabase = getAdminClient()
