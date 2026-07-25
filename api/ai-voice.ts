@@ -61,7 +61,7 @@ async function callDeepSeek(messages: ChatMessage[]): Promise<string> {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'deepseek-chat',
+      model: 'deepseek-v4-flash',
       messages,
       temperature: 0.5,
       max_tokens: 500,

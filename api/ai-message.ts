@@ -67,7 +67,7 @@ async function callDeepSeek(messages: ChatMessage[], opts: CallOptions = {}): Pr
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: 'deepseek-chat',
+      model: 'deepseek-v4-flash',
       messages,
       temperature: opts.temperature ?? 0.5,
       max_tokens: opts.maxTokens ?? 600,
