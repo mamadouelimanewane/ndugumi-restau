@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { useCrmStore } from '../store/useCrmStore'
 
 const links = [
-  { to: '/', label: 'Accueil', icon: '🏠', end: true },
+  { to: '/app', label: 'Accueil', icon: '🏠', end: true },
   { to: '/dashboard', label: 'Tableau de bord', icon: '📊', end: true },
   { to: '/prospects', label: 'Prospects', icon: '🍽️', end: false },
   { to: '/workflow', label: 'Parcours client', icon: '🧭', end: false },

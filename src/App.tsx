@@ -8,6 +8,7 @@ import LandingHeader from './components/LandingHeader'
 import PwaInstallBanner from './components/PwaInstallBanner'
 import Landing from './pages/Landing'
 import PublicLeadForm from './pages/PublicLeadForm'
+import PublicLanding from './pages/PublicLanding'
 import { useCrmStore } from './store/useCrmStore'
 
 // Chargement paresseux : chaque page ne télécharge son code que lorsqu'on y navigue, au lieu de
@@ -57,23 +58,28 @@ function PageLoading() {
 
 export default function App() {
   const location = useLocation()
-  const isLandingPage = location.pathname === '/'
+  const isLandingPage = location.pathname === '/app'
   const ensureAll = useCrmStore((s) => s.ensureAll)
   const currentAgent = useCrmStore((s) => s.currentAgent)
   const hasHydrated = useCrmStore((s) => s.hasHydrated)
   const isPublicLeadPage = location.pathname === '/devenir-partenaire'
+  const isPublicMarketingPage = location.pathname === '/'
+  const bypassesCrmStore = isPublicLeadPage || isPublicMarketingPage
 
   useEffect(() => {
     // Attendre la fin de l'hydratation distante avant de seeder quoi que ce soit : sinon l'état
     // par défaut (vide) déclenche un ensureAll() qui écrit prématurément par-dessus les vraies
-    // données serveur pas encore chargées. Ne rien faire non plus sur la page publique, qui ne
-    // dépend pas du store CRM.
-    if (hasHydrated && !isPublicLeadPage) ensureAll()
-  }, [ensureAll, hasHydrated, isPublicLeadPage])
+    // données serveur pas encore chargées. Ne rien faire non plus sur les pages publiques, qui ne
+    // dépendent pas du store CRM.
+    if (hasHydrated && !bypassesCrmStore) ensureAll()
+  }, [ensureAll, hasHydrated, bypassesCrmStore])
 
-  // Page publique (formulaire d'intérêt restaurant) : reste accessible sans agent choisi ni
-  // attente d'hydratation (pas de sidebar, pas de gate WhoAreYou), pour un lien partageable
-  // avec de vrais restaurateurs sans qu'ils touchent à l'outil interne.
+  // Pages publiques (landing marketing + formulaire d'intérêt restaurant) : restent accessibles
+  // sans agent choisi ni attente d'hydratation (pas de sidebar, pas de gate WhoAreYou) — la landing
+  // est le tout premier écran vu par n'importe qui, avant même de choisir un agent.
+  if (isPublicMarketingPage) {
+    return <PublicLanding />
+  }
   if (isPublicLeadPage) {
     return <PublicLeadForm />
   }
@@ -99,7 +105,7 @@ export default function App() {
         <PwaInstallBanner />
         <Suspense fallback={<PageLoading />}>
           <Routes>
-            <Route path="/" element={<Landing />} />
+            <Route path="/app" element={<Landing />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/prospects" element={<Prospects />} />
             <Route path="/prospects/:id" element={<ProspectDetail />} />
