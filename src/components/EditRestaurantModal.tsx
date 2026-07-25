@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useCrmStore } from '../store/useCrmStore'
 import { STATUTS, STATUT_LABELS, type Statut, type Zone } from '../types'
+import { parseGoogleMapsCoords } from '../utils/geo'
 
 interface EditRestaurantModalProps {
   restaurantId: number
@@ -34,8 +35,24 @@ export default function EditRestaurantModal({ restaurantId, onClose, onSaved, on
   const [tagsInput, setTagsInput] = useState(prospect?.tags ? prospect.tags.join(', ') : '')
   const [exactLat, setExactLat] = useState<string>(restaurant?.exactLat ? String(restaurant.exactLat) : '')
   const [exactLng, setExactLng] = useState<string>(restaurant?.exactLng ? String(restaurant.exactLng) : '')
+  const [pasteInput, setPasteInput] = useState('')
+  const [pasteError, setPasteError] = useState<string | null>(null)
 
   if (!restaurant) return null
+
+  function handleParsePaste() {
+    const coords = parseGoogleMapsCoords(pasteInput)
+    if (!coords) {
+      setPasteError(
+        "Coordonnées non reconnues. Collez un lien Google Maps complet (avec @lat,lng dans l'URL) ou des coordonnées \"lat, lng\" — les liens raccourcis (goo.gl/maps/...) ne sont pas supportés."
+      )
+      return
+    }
+    setPasteError(null)
+    setExactLat(String(coords.lat))
+    setExactLng(String(coords.lng))
+    setPasteInput('')
+  }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -224,6 +241,25 @@ export default function EditRestaurantModal({ restaurantId, onClose, onSaved, on
                 placeholder="Ex : Thiéboudiène, Poisson, Fast-food, Grosse commande"
                 style={{ width: '100%', padding: 8, fontSize: 13, marginTop: 4 }}
               />
+            </div>
+
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)' }}>
+                Emplacement — coller un lien Google Maps ou des coordonnées
+              </label>
+              <div style={{ display: 'flex', gap: 6, marginTop: 4 }}>
+                <input
+                  type="text"
+                  value={pasteInput}
+                  onChange={(e) => { setPasteInput(e.target.value); setPasteError(null) }}
+                  placeholder="https://maps.google.com/... ou 14.6937, -17.4441"
+                  style={{ flex: 1, padding: 8, fontSize: 13 }}
+                />
+                <button type="button" className="btn secondary" onClick={handleParsePaste} disabled={!pasteInput.trim()}>
+                  Localiser
+                </button>
+              </div>
+              {pasteError && <div style={{ fontSize: 11.5, color: 'var(--danger, #c0392b)', marginTop: 4 }}>{pasteError}</div>}
             </div>
 
             <div>

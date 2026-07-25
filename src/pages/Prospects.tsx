@@ -12,6 +12,7 @@ import { STATUTS, STATUT_LABELS, type Statut, type Zone } from '../types'
 import OcrScanModal from '../components/OcrScanModal'
 import EditRestaurantModal from '../components/EditRestaurantModal'
 import PublicLeadsPanel from '../components/PublicLeadsPanel'
+import { parseGoogleMapsCoords } from '../utils/geo'
 
 type SortKey = '' | 'score' | 'statut' | 'quartier' | 'relance'
 
@@ -56,6 +57,23 @@ export default function Prospects() {
   const [newTelephone, setNewTelephone] = useState('')
   const [newQuartier, setNewQuartier] = useState('')
   const [newZone, setNewZone] = useState<Zone>('Dakar intra-muros')
+  const [newGeoPaste, setNewGeoPaste] = useState('')
+  const [newLat, setNewLat] = useState<number | undefined>(undefined)
+  const [newLng, setNewLng] = useState<number | undefined>(undefined)
+  const [newGeoError, setNewGeoError] = useState<string | null>(null)
+
+  function handleParseNewGeo() {
+    const coords = parseGoogleMapsCoords(newGeoPaste)
+    if (!coords) {
+      setNewGeoError(
+        "Coordonnées non reconnues. Collez un lien Google Maps complet (avec @lat,lng dans l'URL) ou des coordonnées \"lat, lng\" — les liens raccourcis (goo.gl/maps/...) ne sont pas supportés."
+      )
+      return
+    }
+    setNewGeoError(null)
+    setNewLat(coords.lat)
+    setNewLng(coords.lng)
+  }
 
   const [selected, setSelected] = useState<Set<number>>(new Set())
   const [bulkAgent, setBulkAgent] = useState(agents[0])
@@ -257,10 +275,15 @@ export default function Prospects() {
       telephone: newTelephone.trim() || 'Non communiqué',
       quartier: newQuartier.trim(),
       zone: newZone,
+      ...(newLat !== undefined && newLng !== undefined ? { exactLat: newLat, exactLng: newLng } : {}),
     })
     setNewNom('')
     setNewTelephone('')
     setNewQuartier('')
+    setNewGeoPaste('')
+    setNewLat(undefined)
+    setNewLng(undefined)
+    setNewGeoError(null)
     setShowAdd(false)
     navigate(`/prospects/${id}`)
   }
@@ -416,6 +439,27 @@ export default function Prospects() {
                 <option value="Dakar intra-muros">Dakar intra-muros</option>
                 <option value="Banlieue">Banlieue</option>
               </select>
+            </div>
+            <div className="field-row" style={{ minWidth: 280 }}>
+              <label>Emplacement — lien Google Maps ou coordonnées (optionnel)</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  type="text"
+                  value={newGeoPaste}
+                  onChange={(e) => { setNewGeoPaste(e.target.value); setNewGeoError(null) }}
+                  placeholder="https://maps.google.com/... ou 14.6937, -17.4441"
+                  style={{ flex: 1 }}
+                />
+                <button type="button" className="btn secondary small" onClick={handleParseNewGeo} disabled={!newGeoPaste.trim()}>
+                  Localiser
+                </button>
+              </div>
+              {newGeoError && <div style={{ fontSize: 11, color: 'var(--danger, #c0392b)', marginTop: 4 }}>{newGeoError}</div>}
+              {newLat !== undefined && newLng !== undefined && (
+                <div style={{ fontSize: 11, color: '#047857', marginTop: 4 }}>
+                  ✅ Position détectée : {newLat.toFixed(5)}, {newLng.toFixed(5)}
+                </div>
+              )}
             </div>
             <div className="field-row">
               <button className="btn" onClick={handleAddRestaurant}>
