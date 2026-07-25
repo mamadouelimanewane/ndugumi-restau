@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCrmStore } from '../store/useCrmStore'
 import { joinProspects, isLate } from '../utils/joined'
-import { waLinkWithText } from '../utils/phone'
+import { waLinkWithText, effectiveWhatsappNumber } from '../utils/phone'
 import { mergeTemplate } from '../utils/mergeTemplate'
 import {
   STATUTS,
@@ -203,7 +203,7 @@ export default function Marketing() {
     let count = 0
     for (const j of urgentProspects) {
       const message = mergeTemplate(DEFAULT_RELANCE_MESSAGE, j, { agent: currentAgent || undefined })
-      const link = waLinkWithText(j.telephone, message)
+      const link = waLinkWithText(effectiveWhatsappNumber(j), message)
       if (link) {
         window.open(link, '_blank', 'noopener,noreferrer')
         addNote(j.id, 'whatsapp', message, currentAgent || 'Non assigné')

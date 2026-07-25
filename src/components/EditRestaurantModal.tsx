@@ -24,6 +24,8 @@ export default function EditRestaurantModal({ restaurantId, onClose, onSaved, on
 
   const [etablissement, setEtablissement] = useState(restaurant?.etablissement || '')
   const [telephone, setTelephone] = useState(restaurant?.telephone || '')
+  const [email, setEmail] = useState(restaurant?.email || '')
+  const [whatsapp, setWhatsapp] = useState(restaurant?.whatsapp || '')
   const [quartier, setQuartier] = useState(restaurant?.quartier || '')
   const [zone, setZone] = useState<Zone>(restaurant?.zone || 'Dakar intra-muros')
   const [statut, setStatutState] = useState<Statut>(prospect?.statut || 'nouveau')
@@ -48,6 +50,8 @@ export default function EditRestaurantModal({ restaurantId, onClose, onSaved, on
     updateRestaurant(restaurantId, {
       etablissement: etablissement.trim(),
       telephone: telephone.trim() || 'Non communiqué',
+      email: email.trim() || undefined,
+      whatsapp: whatsapp.trim() || undefined,
       quartier: quartier.trim(),
       zone,
       ...(latNum !== undefined && lngNum !== undefined ? { exactLat: latNum, exactLng: lngNum } : {}),
@@ -120,6 +124,28 @@ export default function EditRestaurantModal({ restaurantId, onClose, onSaved, on
                 value={telephone}
                 onChange={(e) => setTelephone(e.target.value)}
                 placeholder="Ex : 77 123 45 67"
+                style={{ width: '100%', padding: 8, fontSize: 13, marginTop: 4 }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)' }}>Numéro WhatsApp (si différent)</label>
+              <input
+                type="text"
+                value={whatsapp}
+                onChange={(e) => setWhatsapp(e.target.value)}
+                placeholder="Laisser vide pour utiliser le téléphone"
+                style={{ width: '100%', padding: 8, fontSize: 13, marginTop: 4 }}
+              />
+            </div>
+
+            <div>
+              <label style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-dim)' }}>Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Ex : contact@restaurant.sn"
                 style={{ width: '100%', padding: 8, fontSize: 13, marginTop: 4 }}
               />
             </div>

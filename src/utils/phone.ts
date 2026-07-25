@@ -41,6 +41,11 @@ export function smsLinkWithText(phone: string, text: string): string | null {
   return `sms:+${intl}?body=${encodeURIComponent(text)}`
 }
 
+/** Numéro à utiliser pour WhatsApp : le champ dédié s'il est renseigné, sinon le téléphone principal. */
+export function effectiveWhatsappNumber(entity: { telephone: string; whatsapp?: string }): string {
+  return entity.whatsapp?.trim() || entity.telephone
+}
+
 /** Un champ téléphone peut contenir plusieurs numéros séparés par "/" — on renvoie un lien par numéro valide. */
 export function parsePhoneLinks(phone: string): PhoneLink[] {
   if (!phone || phone.toLowerCase().startsWith('non communiqu')) return []

@@ -30,7 +30,7 @@ import SmartProductRecommendation from '../components/SmartProductRecommendation
 import EditRestaurantModal from '../components/EditRestaurantModal'
 import { isLate, joinProspects } from '../utils/joined'
 import { computeQuartierDensity } from '../utils/priority'
-import { waLinkWithText } from '../utils/phone'
+import { waLinkWithText, effectiveWhatsappNumber } from '../utils/phone'
 import { mailtoLink } from '../utils/email'
 import { exportVisitCardPdf } from '../utils/pdf'
 import { fetchAiSummary, fetchAiMessage, fetchAiScore } from '../utils/ai'
@@ -85,6 +85,8 @@ export default function ProspectDetail() {
   const [editingInfo, setEditingInfo] = useState(false)
   const [editNom, setEditNom] = useState(restaurant?.etablissement ?? '')
   const [editTel, setEditTel] = useState(restaurant?.telephone ?? '')
+  const [editEmail, setEditEmail] = useState(restaurant?.email ?? '')
+  const [editWhatsapp, setEditWhatsapp] = useState(restaurant?.whatsapp ?? '')
   const [editQuartier, setEditQuartier] = useState(restaurant?.quartier ?? '')
   const [editZone, setEditZone] = useState<Zone>(restaurant?.zone ?? 'Dakar intra-muros')
 
@@ -149,6 +151,8 @@ export default function ProspectDetail() {
     updateRestaurant(restaurantId, {
       etablissement: editNom.trim() || restaurant.etablissement,
       telephone: editTel.trim() || restaurant.telephone,
+      email: editEmail.trim() || undefined,
+      whatsapp: editWhatsapp.trim() || undefined,
       quartier: editQuartier.trim() || restaurant.quartier,
       zone: editZone,
     })
@@ -210,7 +214,7 @@ export default function ProspectDetail() {
   const selectedEntries = productList.filter((p) => (selectedQty[p.id] ?? 0) > 0)
   const proposalTotal = selectedEntries.reduce((acc, p) => acc + p.prixUnitaire * (selectedQty[p.id] ?? 0), 0)
 
-  const proposalPhone = crm.contacts.find((c) => c.principal)?.telephone || restaurant.telephone
+  const proposalPhone = crm.contacts.find((c) => c.principal)?.telephone || effectiveWhatsappNumber(restaurant)
 
   function toggleProduct(id: string) {
     setSelectedQty((prev) => {
@@ -310,7 +314,7 @@ export default function ProspectDetail() {
   function handleSendAiMessage() {
     if (!aiMessageCorps.trim()) return
     if (aiMessageCanal === 'whatsapp') {
-      const phone = crm.contacts.find((c) => c.principal)?.telephone || restaurant.telephone
+      const phone = crm.contacts.find((c) => c.principal)?.telephone || effectiveWhatsappNumber(restaurant)
       const link = waLinkWithText(phone, aiMessageCorps.trim())
       if (!link) {
         alert('Aucun numéro de téléphone exploitable pour ce restaurant.')
@@ -318,7 +322,10 @@ export default function ProspectDetail() {
       }
       window.open(link, '_blank', 'noopener,noreferrer')
     } else {
-      const email = crm.contacts.find((c) => c.principal && c.email)?.email || crm.contacts.find((c) => c.email)?.email
+      const email =
+        crm.contacts.find((c) => c.principal && c.email)?.email ||
+        crm.contacts.find((c) => c.email)?.email ||
+        restaurant.email
       if (!email) {
         alert("Aucune adresse email connue pour ce restaurant (ajoutez un contact avec email).")
         return
@@ -434,7 +441,7 @@ export default function ProspectDetail() {
         <WhatsAppDirectChat
           restaurantId={restaurantId}
           etablissement={restaurant.etablissement}
-          telephone={restaurant.telephone}
+          telephone={effectiveWhatsappNumber(restaurant)}
         />
       </div>
 
@@ -547,7 +554,21 @@ export default function ProspectDetail() {
                   <label>Téléphone</label>
                   <div>
                     {restaurant.telephone}
-                    <PhoneQuickActions phone={restaurant.telephone} />
+                    <PhoneQuickActions phone={restaurant.telephone} whatsappPhone={restaurant.whatsapp} />
+                  </div>
+                </div>
+                <div className="field-row">
+                  <label>WhatsApp</label>
+                  <div>{restaurant.whatsapp || <span style={{ color: 'var(--text-dim)' }}>Identique au téléphone</span>}</div>
+                </div>
+                <div className="field-row">
+                  <label>Email</label>
+                  <div>
+                    {restaurant.email ? (
+                      <a href={`mailto:${restaurant.email}`}>{restaurant.email}</a>
+                    ) : (
+                      <span style={{ color: 'var(--text-dim)' }}>Non renseigné</span>
+                    )}
                   </div>
                 </div>
                 <div className="field-row">
@@ -568,6 +589,14 @@ export default function ProspectDetail() {
                 <div className="field-row">
                   <label>Téléphone</label>
                   <input type="text" value={editTel} onChange={(e) => setEditTel(e.target.value)} />
+                </div>
+                <div className="field-row">
+                  <label>Numéro WhatsApp (si différent)</label>
+                  <input type="text" value={editWhatsapp} onChange={(e) => setEditWhatsapp(e.target.value)} placeholder="Laisser vide pour utiliser le téléphone" />
+                </div>
+                <div className="field-row">
+                  <label>Email</label>
+                  <input type="email" value={editEmail} onChange={(e) => setEditEmail(e.target.value)} placeholder="Ex : contact@restaurant.sn" />
                 </div>
                 <div className="field-row">
                   <label>Quartier / commune</label>
@@ -1134,7 +1163,7 @@ export default function ProspectDetail() {
         <VisualQuoteModal
           restaurantId={restaurantId}
           etablissement={restaurant.etablissement}
-          telephone={restaurant.telephone}
+          telephone={effectiveWhatsappNumber(restaurant)}
           onClose={() => setShowQuoteModal(false)}
         />
       )}

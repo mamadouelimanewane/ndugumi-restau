@@ -4,6 +4,8 @@ export interface RestaurantSeed {
   id: number
   etablissement: string
   telephone: string
+  email?: string
+  whatsapp?: string // si différent du téléphone principal ; sinon les envois WhatsApp utilisent telephone
   quartier: string
   zone: Zone
   exactLat?: number

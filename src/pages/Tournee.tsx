@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useCrmStore } from '../store/useCrmStore'
 import { joinProspects, isLate, isToday } from '../utils/joined'
 import { googleCalendarLink, toISODate } from '../utils/calendar'
+import { waLinkWithText, effectiveWhatsappNumber } from '../utils/phone'
 import { STATUT_COLORS, STATUT_LABELS, type Statut } from '../types'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -295,9 +296,9 @@ export const Tournee: React.FC = () => {
                     </div>
                     
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <a 
-                        href={`https://wa.me/221${p.telephone.replace(/\s+/g, '')}`} 
-                        target="_blank" 
+                      <a
+                        href={waLinkWithText(effectiveWhatsappNumber(p), '') || '#'}
+                        target="_blank"
                         rel="noreferrer"
                         className="btn small"
                         style={{ backgroundColor: '#25D366', color: 'white', border: 'none' }}

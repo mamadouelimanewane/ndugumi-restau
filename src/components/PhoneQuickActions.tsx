@@ -1,8 +1,15 @@
 import { parsePhoneLinks } from '../utils/phone'
 
-export default function PhoneQuickActions({ phone }: { phone: string }) {
+interface PhoneQuickActionsProps {
+  phone: string
+  /** Numéro WhatsApp dédié, si différent de `phone` (voir champ "whatsapp" du restaurant). */
+  whatsappPhone?: string
+}
+
+export default function PhoneQuickActions({ phone, whatsappPhone }: PhoneQuickActionsProps) {
   const links = parsePhoneLinks(phone)
-  if (links.length === 0) return null
+  const waLinks = whatsappPhone?.trim() ? parsePhoneLinks(whatsappPhone) : links
+  if (links.length === 0 && waLinks.length === 0) return null
 
   return (
     <span style={{ display: 'inline-flex', gap: 6, marginLeft: 8 }}>
@@ -13,17 +20,19 @@ export default function PhoneQuickActions({ phone }: { phone: string }) {
               📞
             </button>
           </a>
-          <a href={l.waHref} target="_blank" rel="noopener noreferrer" title={`WhatsApp ${l.raw}`}>
-            <button className="btn secondary small" type="button" style={{ padding: '2px 8px' }}>
-              💬
-            </button>
-          </a>
           <a href={l.smsHref} title={`SMS ${l.raw} (si pas de WhatsApp)`}>
             <button className="btn secondary small" type="button" style={{ padding: '2px 8px' }}>
               💌
             </button>
           </a>
         </span>
+      ))}
+      {waLinks.map((l) => (
+        <a key={'wa-' + l.digits} href={l.waHref} target="_blank" rel="noopener noreferrer" title={`WhatsApp ${l.raw}`}>
+          <button className="btn secondary small" type="button" style={{ padding: '2px 8px' }}>
+            💬
+          </button>
+        </a>
       ))}
     </span>
   )

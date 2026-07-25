@@ -134,7 +134,13 @@ export default function Prospects() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase()
     const list = joined.filter((j) => {
-      if (q && !j.etablissement.toLowerCase().includes(q) && !j.telephone.toLowerCase().includes(q)) {
+      if (
+        q &&
+        !j.etablissement.toLowerCase().includes(q) &&
+        !j.telephone.toLowerCase().includes(q) &&
+        !(j.whatsapp || '').toLowerCase().includes(q) &&
+        !(j.email || '').toLowerCase().includes(q)
+      ) {
         return false
       }
       if (zoneFilter && j.zone !== zoneFilter) return false
@@ -560,7 +566,15 @@ export default function Prospects() {
                     </div>
                   )}
                 </td>
-                <td>{j.telephone}</td>
+                <td>
+                  {j.telephone}
+                  {(j.whatsapp || j.email) && (
+                    <div style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>
+                      {j.whatsapp && <div>💬 {j.whatsapp}</div>}
+                      {j.email && <div>✉️ {j.email}</div>}
+                    </div>
+                  )}
+                </td>
                 <td>{j.quartier}</td>
                 <td>
                   <span className="zone-tag">{j.zone === 'Dakar intra-muros' ? 'Dakar' : 'Banlieue'}</span>

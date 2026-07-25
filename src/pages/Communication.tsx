@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useRef } from 'react'
 import { useSearchParams, Link } from 'react-router-dom'
 import { useCrmStore } from '../store/useCrmStore'
 import { joinProspects } from '../utils/joined'
-import { waLinkWithText } from '../utils/phone'
+import { waLinkWithText, effectiveWhatsappNumber } from '../utils/phone'
 import { mailtoLink } from '../utils/email'
 import { mergeTemplate } from '../utils/mergeTemplate'
 import {
@@ -173,7 +173,7 @@ export default function Communication() {
       let count = 0
       for (const j of selectedList) {
         const message = mergeTemplate(selectedTemplate.corps, j, { agent: sendingAgent })
-        const link = waLinkWithText(j.telephone, message)
+        const link = waLinkWithText(effectiveWhatsappNumber(j), message)
         if (link) {
           window.open(link, '_blank')
           addNote(j.id, 'whatsapp', message, sendingAgent)
@@ -239,7 +239,8 @@ export default function Communication() {
     const principal = j.crm.contacts.find((c) => c.principal && c.email)
     if (principal) return principal.email
     const any = j.crm.contacts.find((c) => c.email)
-    return any ? any.email : null
+    if (any) return any.email
+    return j.email || null
   }
 
   function handleSendWhatsapp(j: (typeof joined)[number]) {
@@ -249,7 +250,7 @@ export default function Communication() {
       return
     }
     const message = mergeTemplate(bodyRaw, j, { agent: sendingAgent })
-    const link = waLinkWithText(j.telephone, message)
+    const link = waLinkWithText(effectiveWhatsappNumber(j), message)
     if (!link) {
       alert('Aucun numéro exploitable pour ce restaurant.')
       return
