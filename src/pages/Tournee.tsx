@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCrmStore } from '../store/useCrmStore'
 import { joinProspects, isLate, isToday } from '../utils/joined'
+import { googleCalendarLink, toISODate } from '../utils/calendar'
 import { STATUT_COLORS, STATUT_LABELS, type Statut } from '../types'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
@@ -302,6 +303,20 @@ export const Tournee: React.FC = () => {
                         style={{ backgroundColor: '#25D366', color: 'white', border: 'none' }}
                       >
                         WhatsApp
+                      </a>
+                      <a
+                        href={googleCalendarLink({
+                          title: `Visite terrain — ${p.etablissement}`,
+                          details: `Prospection NDUGUMi · ${p.telephone}`,
+                          location: p.quartier,
+                          dateISO: p.crm.prochaineRelance ? p.crm.prochaineRelance.slice(0, 10) : toISODate(new Date()),
+                        })}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn secondary small"
+                        title="Ajouter à Google Calendar"
+                      >
+                        📅
                       </a>
                       <Link to={`/prospects/${p.id}`} className="btn secondary small">
                         Ouvrir

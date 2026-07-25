@@ -62,11 +62,13 @@ export default async function handler(req: any, res: any) {
     }
 
     if (req.method === 'GET') {
-      const { data, error } = await supabase
-        .from('public_leads')
-        .select('*')
-        .eq('converted', false)
-        .order('created_at', { ascending: false })
+      let query = supabase.from('public_leads').select('*').order('created_at', { ascending: false })
+      if (req.query?.all !== 'true') {
+        query = query.eq('converted', false)
+      } else {
+        query = query.limit(50)
+      }
+      const { data, error } = await query
       if (error) throw error
       res.status(200).json({ leads: data ?? [] })
       return

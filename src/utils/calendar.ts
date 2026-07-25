@@ -41,3 +41,31 @@ export function getMonthMatrix(monthStart: Date): Date[][] {
 export function monthLabel(d: Date): string {
   return d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
 }
+
+/**
+ * Lien "Ajouter à Google Calendar" (ouvre l'interface de création d'événement pré-remplie) —
+ * aucun identifiant OAuth nécessaire, contrairement à une vraie synchronisation bidirectionnelle
+ * via l'API Google Calendar.
+ */
+export function googleCalendarLink(opts: {
+  title: string
+  details?: string
+  location?: string
+  /** Date "yyyy-mm-dd" : génère un événement journée entière si pas d'heure précise connue. */
+  dateISO: string
+}): string {
+  const start = opts.dateISO.replace(/-/g, '')
+  const nextDay = new Date(opts.dateISO)
+  nextDay.setDate(nextDay.getDate() + 1)
+  const end = toISODate(nextDay).replace(/-/g, '')
+
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: opts.title,
+    dates: `${start}/${end}`,
+  })
+  if (opts.details) params.set('details', opts.details)
+  if (opts.location) params.set('location', opts.location)
+
+  return `https://calendar.google.com/calendar/render?${params.toString()}`
+}

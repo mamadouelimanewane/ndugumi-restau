@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCrmStore } from '../store/useCrmStore'
 import { isLate, isToday } from '../utils/joined'
-import { getMonthMatrix, monthLabel, startOfMonth, toISODate, WEEKDAY_LABELS } from '../utils/calendar'
+import { getMonthMatrix, googleCalendarLink, monthLabel, startOfMonth, toISODate, WEEKDAY_LABELS } from '../utils/calendar'
 import {
   TASK_PRIORITE_LABELS,
   TASK_PRIORITE_COLORS,
@@ -326,7 +326,22 @@ export default function Tasks() {
                   </span>
                 </td>
                 <td>{t.agent}</td>
-                <td>
+                <td style={{ display: 'flex', gap: 6 }}>
+                  <a
+                    href={googleCalendarLink({
+                      title: `${t.titre} — ${t.restaurant.etablissement}`,
+                      details: t.description,
+                      location: t.restaurant.quartier,
+                      dateISO: t.dateEcheance,
+                    })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title="Ajouter à Google Calendar"
+                  >
+                    <button className="btn secondary small" type="button">
+                      📅
+                    </button>
+                  </a>
                   <button className="btn secondary small" onClick={() => removeTask(t.id)}>
                     Supprimer
                   </button>

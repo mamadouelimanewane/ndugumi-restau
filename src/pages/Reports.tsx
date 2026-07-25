@@ -17,6 +17,7 @@ import {
   type InteractionType,
   type SanteCompte,
 } from '../types'
+import PublicLeadsHistoryPanel from '../components/PublicLeadsHistoryPanel'
 
 function formatFcfa(n: number): string {
   return n.toLocaleString('fr-FR') + ' FCFA'
@@ -315,6 +316,8 @@ export default function Reports() {
           </table>
         )}
       </div>
+
+      <PublicLeadsHistoryPanel />
 
       <div className="kpi-grid">
         <div className="kpi-card">

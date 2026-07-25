@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCrmStore } from '../store/useCrmStore'
 import { joinProspects, isLate } from '../utils/joined'
+import { waLinkWithText } from '../utils/phone'
+import { mergeTemplate } from '../utils/mergeTemplate'
 import {
   STATUTS,
   STATUT_LABELS,
@@ -27,6 +29,8 @@ export default function Marketing() {
   const campaignSends = useCrmStore((s) => s.campaignSends)
   const addCampaign = useCrmStore((s) => s.addCampaign)
   const removeCampaign = useCrmStore((s) => s.removeCampaign)
+  const addNote = useCrmStore((s) => s.addNote)
+  const currentAgent = useCrmStore((s) => s.currentAgent)
 
   const joined = useMemo(() => joinProspects(restaurants, prospects), [restaurants, prospects])
 
@@ -180,6 +184,35 @@ export default function Marketing() {
     }
   }
 
+  const urgentProspects = useMemo(
+    () => joined.filter((j) => isLate(j.crm.prochaineRelance) && ['contacte', 'interesse', 'rdv', 'negociation'].includes(j.crm.statut)),
+    [joined]
+  )
+
+  const DEFAULT_RELANCE_MESSAGE =
+    "Bonjour {etablissement}, on souhaitait reprendre contact avec vous concernant NDUGUMi — où en êtes-vous de votre côté ? N'hésitez pas à nous recontacter si vous avez des questions. — {agent}"
+
+  function handleQuickRelanceUrgents() {
+    if (urgentProspects.length === 0) return
+    if (
+      !confirm(
+        `Envoyer un message WhatsApp de relance à ${urgentProspects.length} prospect(s) en retard ? Un onglet WhatsApp s'ouvrira pour chacun (message pré-rempli, à vous de l'envoyer).`
+      )
+    )
+      return
+    let count = 0
+    for (const j of urgentProspects) {
+      const message = mergeTemplate(DEFAULT_RELANCE_MESSAGE, j, { agent: currentAgent || undefined })
+      const link = waLinkWithText(j.telephone, message)
+      if (link) {
+        window.open(link, '_blank', 'noopener,noreferrer')
+        addNote(j.id, 'whatsapp', message, currentAgent || 'Non assigné')
+        count++
+      }
+    }
+    alert(`${count} message(s) WhatsApp ouvert(s) et enregistré(s) dans l'historique.`)
+  }
+
   const handleCreateCampaignForSegment = (segmentId: string, segmentNom: string) => {
     const id = addCampaign({
       nom: `Campagne ${segmentNom}`,
@@ -220,6 +253,15 @@ export default function Marketing() {
                 <button className="btn secondary small" onClick={() => handleViewProspects(seg.id)} style={{ flex: 1, padding: '6px' }}>Voir les prospects →</button>
                 <button className="btn small" onClick={() => handleCreateCampaignForSegment(seg.id, seg.nom)} style={{ flex: 1, padding: '6px' }}>Créer une campagne</button>
               </div>
+              {seg.id === 'urgents' && seg.count > 0 && (
+                <button
+                  className="btn small"
+                  style={{ marginTop: 8, background: '#25d366', borderColor: '#1f8a4c', color: '#fff', fontWeight: 700 }}
+                  onClick={handleQuickRelanceUrgents}
+                >
+                  ⚡ Relancer maintenant sur WhatsApp ({seg.count})
+                </button>
+              )}
             </div>
           ))}
         </div>
