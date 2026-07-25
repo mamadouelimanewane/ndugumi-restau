@@ -18,6 +18,11 @@ export default function PhoneQuickActions({ phone }: { phone: string }) {
               💬
             </button>
           </a>
+          <a href={l.smsHref} title={`SMS ${l.raw} (si pas de WhatsApp)`}>
+            <button className="btn secondary small" type="button" style={{ padding: '2px 8px' }}>
+              💌
+            </button>
+          </a>
         </span>
       ))}
     </span>

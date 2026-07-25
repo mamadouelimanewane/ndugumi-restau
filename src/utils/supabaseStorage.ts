@@ -1,4 +1,5 @@
 import { StateStorage } from 'zustand/middleware'
+import { hydrationGuard } from './hydrationGuard'
 
 const isConfigured = Boolean(import.meta.env.VITE_SUPABASE_URL)
 
@@ -25,6 +26,11 @@ export const supabaseStorage: StateStorage = {
   setItem: async (name: string, value: string): Promise<void> => {
     if (!isConfigured) {
       localStorage.setItem(name, value)
+      return
+    }
+    if (!hydrationGuard.ready) {
+      // Hydratation initiale pas encore terminée : ignorer, sinon un état par défaut prématuré
+      // écraserait les vraies données distantes (voir onRehydrateStorage dans useCrmStore.ts).
       return
     }
 

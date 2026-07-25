@@ -3,6 +3,7 @@ export interface PhoneLink {
   digits: string
   telHref: string
   waHref: string
+  smsHref: string
 }
 
 function toInternationalDigits(raw: string): string | null {
@@ -28,6 +29,18 @@ export function waLinkWithText(phone: string, text: string): string | null {
   return `https://wa.me/${intl}?text=${encodeURIComponent(text)}`
 }
 
+/**
+ * Lien sms: avec message pré-rempli, pour le premier numéro valide trouvé — fallback pour les
+ * restaurants sans WhatsApp exploitable. Le paramètre "body" n'est pas standardisé (iOS attend
+ * "&body=", la plupart des Android "?body=") : on utilise "?body=", le plus largement supporté.
+ * N'ouvre que l'app SMS du téléphone de l'agent — pas d'envoi automatique/serveur.
+ */
+export function smsLinkWithText(phone: string, text: string): string | null {
+  const intl = firstInternationalDigits(phone)
+  if (!intl) return null
+  return `sms:+${intl}?body=${encodeURIComponent(text)}`
+}
+
 /** Un champ téléphone peut contenir plusieurs numéros séparés par "/" — on renvoie un lien par numéro valide. */
 export function parsePhoneLinks(phone: string): PhoneLink[] {
   if (!phone || phone.toLowerCase().startsWith('non communiqu')) return []
@@ -43,6 +56,7 @@ export function parsePhoneLinks(phone: string): PhoneLink[] {
         digits: intl,
         telHref: `tel:+${intl}`,
         waHref: `https://wa.me/${intl}`,
+        smsHref: `sms:+${intl}`,
       }
     })
     .filter((x): x is PhoneLink => x !== null)

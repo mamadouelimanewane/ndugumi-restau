@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { supabaseStorage } from '../utils/supabaseStorage'
+import { hydrationGuard } from '../utils/hydrationGuard'
 import restaurantsSeed from '../data/restaurants.json'
 import {
   type RestaurantSeed,
@@ -214,6 +215,8 @@ interface CrmStore {
   directWhatsAppMessages: Record<string, DirectWhatsAppMessage>
   visualQuotes: Record<string, VisualQuote>
   agentGoals: Record<string, AgentGoal>
+  hasHydrated: boolean
+  setHasHydrated: (value: boolean) => void
 
   ensureAll: () => void
 
@@ -344,6 +347,8 @@ export const useCrmStore = create<CrmStore>()(
       directWhatsAppMessages: {},
       visualQuotes: {},
       agentGoals: {},
+      hasHydrated: false,
+      setHasHydrated: (value) => set({ hasHydrated: value }),
 
       sendDirectWhatsAppMessage: (restaurantId, texte, agent, direction = 'sortant') => {
         const id = 'wa_' + crypto.randomUUID()
@@ -1131,6 +1136,14 @@ export const useCrmStore = create<CrmStore>()(
           segments: persisted.segments ?? {},
           settings: persisted.settings ?? {},
         }
+      },
+      onRehydrateStorage: () => (state, error) => {
+        // Appelé même en cas d'échec (error non-null, state alors undefined) : on débloque quand
+        // même les écritures dans ce cas, sinon l'app resterait bloquée en lecture seule pour de bon.
+        hydrationGuard.ready = true
+        if (state) state.setHasHydrated(true)
+        else useCrmStore.setState({ hasHydrated: true })
+        if (error) console.error('Erreur de réhydratation du store', error)
       },
     }
   )

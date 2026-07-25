@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useCrmStore } from '../store/useCrmStore'
 import { joinProspects } from '../utils/joined'
 import { startOfMonth } from '../utils/calendar'
@@ -184,6 +184,55 @@ export default function Reports() {
     return Object.entries(m).sort((a, b) => b[1] - a[1])
   }, [joined])
 
+  interface WeeklyReport {
+    id: string
+    period_start: string
+    period_end: string
+    created_at: string
+    data: {
+      totalRestaurants: number
+      totalClients: number
+      newProspects: number
+      newSignings: number
+      interactions: number
+      orderCount: number
+      revenue: number
+    }
+  }
+  const [weeklyReports, setWeeklyReports] = useState<WeeklyReport[]>([])
+  const [generatingReport, setGeneratingReport] = useState(false)
+
+  async function loadWeeklyReports() {
+    try {
+      const res = await fetch('/api/weekly-report')
+      const data = await res.json()
+      setWeeklyReports(data.reports ?? [])
+    } catch (e) {
+      console.error('Erreur chargement rapports hebdomadaires', e)
+    }
+  }
+
+  useEffect(() => {
+    loadWeeklyReports()
+  }, [])
+
+  async function handleGenerateReportNow() {
+    setGeneratingReport(true)
+    try {
+      const res = await fetch('/api/weekly-report?action=generate')
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.error || 'Erreur lors de la génération du rapport.')
+        return
+      }
+      await loadWeeklyReports()
+    } catch (e) {
+      alert('Impossible de contacter le serveur.')
+    } finally {
+      setGeneratingReport(false)
+    }
+  }
+
   return (
     <div>
       <div className="page-header">
@@ -215,6 +264,56 @@ export default function Reports() {
             Exporter les clients en PDF
           </button>
         </div>
+      </div>
+
+      <div className="panel" style={{ marginBottom: 24 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <div>
+            <h3 style={{ margin: 0 }}>📅 Rapports hebdomadaires automatiques</h3>
+            <p className="page-subtitle" style={{ margin: '4px 0 0' }}>
+              Générés chaque lundi matin (Vercel Cron) — calcul automatique, pas d'envoi email (nécessiterait une clé API d'un fournisseur email).
+            </p>
+          </div>
+          <button className="btn secondary small" onClick={handleGenerateReportNow} disabled={generatingReport}>
+            {generatingReport ? 'Génération…' : '🔄 Générer maintenant'}
+          </button>
+        </div>
+        {weeklyReports.length === 0 ? (
+          <div className="empty-state" style={{ marginTop: 12 }}>
+            Aucun rapport généré pour l'instant. Le premier sera créé au prochain passage du Cron (lundi 8h) — ou cliquez sur « Générer maintenant ».
+          </div>
+        ) : (
+          <table className="data-table" style={{ marginTop: 12 }}>
+            <thead>
+              <tr>
+                <th>Période</th>
+                <th>Nouveaux prospects</th>
+                <th>Nouvelles signatures</th>
+                <th>Interactions</th>
+                <th>Commandes</th>
+                <th>Revenu marché</th>
+                <th>Généré le</th>
+              </tr>
+            </thead>
+            <tbody>
+              {weeklyReports.map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    {new Date(r.period_start).toLocaleDateString('fr-FR')} → {new Date(r.period_end).toLocaleDateString('fr-FR')}
+                  </td>
+                  <td>{r.data.newProspects}</td>
+                  <td>{r.data.newSignings}</td>
+                  <td>{r.data.interactions}</td>
+                  <td>{r.data.orderCount}</td>
+                  <td>{formatFcfa(r.data.revenue)}</td>
+                  <td style={{ fontSize: 11.5, color: 'var(--text-dim)' }}>
+                    {new Date(r.created_at).toLocaleString('fr-FR')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div className="kpi-grid">

@@ -138,6 +138,24 @@ export default function Settings() {
         </div>
       </div>
 
+      <div className="panel" style={{ marginBottom: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+        <div>
+          <strong style={{ fontSize: 13 }}>🔗 Lien public « Devenir partenaire »</strong>
+          <div style={{ fontSize: 12, color: 'var(--text-dim)' }}>
+            À partager avec des restaurateurs (WhatsApp, carte de visite…) — leurs demandes apparaissent dans Prospects.
+          </div>
+        </div>
+        <button
+          className="btn secondary small"
+          onClick={() => {
+            navigator.clipboard.writeText(`${window.location.origin}/devenir-partenaire`)
+            alert('Lien copié dans le presse-papier !')
+          }}
+        >
+          📋 Copier le lien
+        </button>
+      </div>
+
       {/* Onglets de Paramétrage */}
       <div className="filters-bar" style={{ marginBottom: 20 }}>
         <button className={activeTab === 'utilisateurs' ? 'btn' : 'btn secondary'} onClick={() => setActiveTab('utilisateurs')}>

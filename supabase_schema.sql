@@ -49,3 +49,21 @@ END;
 $func$;
 
 REVOKE ALL ON FUNCTION public.increment_rate_limit(TEXT, TIMESTAMPTZ) FROM anon, authenticated;
+
+-- 4. Formulaire public d'intérêt restaurant (page /devenir-partenaire), soumissions reçues via
+-- /api/lead (POST public, GET/PATCH utilisés par le CRM pour lister et convertir en prospect).
+-- Table indépendante du blob app_state pour éviter tout risque de course/écrasement lors d'une
+-- soumission concurrente à une modification en cours dans le CRM.
+CREATE TABLE IF NOT EXISTS public.public_leads (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  etablissement TEXT NOT NULL,
+  telephone TEXT NOT NULL,
+  quartier TEXT,
+  message TEXT,
+  created_at TIMESTAMPTZ DEFAULT now() NOT NULL,
+  converted BOOLEAN DEFAULT false NOT NULL,
+  restaurant_id INTEGER
+);
+
+ALTER TABLE public.public_leads ENABLE ROW LEVEL SECURITY;
+REVOKE ALL ON public.public_leads FROM anon, authenticated;

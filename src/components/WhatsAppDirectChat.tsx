@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useCrmStore } from '../store/useCrmStore'
 import { DirectWhatsAppMessage } from '../types'
+import { waLinkWithText } from '../utils/phone'
 
 interface WhatsAppDirectChatProps {
   restaurantId: number
@@ -14,7 +15,6 @@ export default function WhatsAppDirectChat({ restaurantId, etablissement, teleph
   const currentAgent = useCrmStore((s) => s.currentAgent)
 
   const [inputMessage, setInputMessage] = useState('')
-  const [botActive, setBotActive] = useState(false)
 
   const chatHistory = useMemo(() => {
     return Object.values(directWhatsAppMessages)
@@ -24,18 +24,15 @@ export default function WhatsAppDirectChat({ restaurantId, etablissement, teleph
 
   function handleSend() {
     if (!inputMessage.trim()) return
+    const link = waLinkWithText(telephone, inputMessage.trim())
+    if (!link) {
+      alert('Aucun numéro WhatsApp exploitable pour ce restaurant.')
+      return
+    }
+    window.open(link, '_blank', 'noopener,noreferrer')
     const agent = currentAgent || 'Commercial'
     sendDirectWhatsAppMessage(restaurantId, inputMessage.trim(), agent, 'sortant')
     setInputMessage('')
-  }
-
-  function handleSimulateIncoming() {
-    sendDirectWhatsAppMessage(restaurantId, `Bonjour ! Pouvez-vous nous livrer 3 sacs de riz et 2 bidons d'huile aujourd'hui ?`, 'Client', 'entrant')
-    if (botActive) {
-      setTimeout(() => {
-        sendDirectWhatsAppMessage(restaurantId, `🤖 [Agent WhatsApp 24/7 NDUGUMi] : Bonjour ! Votre commande de 3 sacs de riz (45 000 FCFA) et 2 bidons d'huile (44 000 FCFA) est bien reçue. Livraison prévue avant 11h. Merci !`, 'Agent Autonome IA', 'sortant')
-      }, 1000)
-    }
   }
 
   return (
@@ -43,21 +40,12 @@ export default function WhatsAppDirectChat({ restaurantId, etablissement, teleph
       {/* Header WhatsApp */}
       <div style={{ background: '#075e54', color: '#fff', padding: '10px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
         <div>
-          <strong style={{ fontSize: 14 }}>💬 WhatsApp Direct API — {etablissement}</strong>
+          <strong style={{ fontSize: 14 }}>💬 WhatsApp Direct — {etablissement}</strong>
           <div style={{ fontSize: 11, opacity: 0.8 }}>{telephone || 'Sans numéro'}</div>
         </div>
-        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          <button
-            className="btn small secondary"
-            style={{ fontSize: 11, background: botActive ? '#25d366' : 'rgba(255,255,255,0.2)', color: '#fff', borderColor: 'transparent' }}
-            onClick={() => setBotActive(!botActive)}
-          >
-            {botActive ? '🤖 Chatbot IA Actif 24/7' : '🤖 Activer Chatbot 24/7'}
-          </button>
-          <button className="btn small secondary" style={{ fontSize: 11, background: 'rgba(255,255,255,0.2)', color: '#fff', borderColor: 'transparent' }} onClick={handleSimulateIncoming}>
-            ⚡ Simuler Message Client
-          </button>
-        </div>
+      </div>
+      <div style={{ background: '#fff7e0', color: '#7a5c00', fontSize: 11, padding: '6px 12px', borderBottom: '1px solid #f0e0a8' }}>
+        « Envoyer » ouvre une vraie conversation WhatsApp avec ce numéro (message pré-rempli) — les réponses du restaurant arrivent dans votre WhatsApp, pas ici. Historique conservé ci-dessous pour référence.
       </div>
 
       {/* Zone de Messages */}

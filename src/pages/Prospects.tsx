@@ -11,6 +11,7 @@ import { fetchAiMessage } from '../utils/ai'
 import { STATUTS, STATUT_LABELS, type Statut, type Zone } from '../types'
 import OcrScanModal from '../components/OcrScanModal'
 import EditRestaurantModal from '../components/EditRestaurantModal'
+import PublicLeadsPanel from '../components/PublicLeadsPanel'
 
 type SortKey = '' | 'score' | 'statut' | 'quartier' | 'relance'
 
@@ -297,6 +298,7 @@ export default function Prospects() {
 
   return (
     <div>
+      <PublicLeadsPanel />
       <div className="page-header">
         <div>
           <h1 className="page-title">Prospects</h1>
