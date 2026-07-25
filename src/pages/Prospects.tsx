@@ -588,7 +588,7 @@ export default function Prospects() {
               <th>Agent</th>
               <th>Relance</th>
               <th>NDUGUMi</th>
-              <th title="Score de priorité : plus c'est haut, plus il faut agir vite">Score</th>
+              <th>WhatsApp</th>
               <th style={{ textAlign: 'center', width: 120 }}>Actions</th>
             </tr>
           </thead>
@@ -612,11 +612,8 @@ export default function Prospects() {
                 </td>
                 <td>
                   {j.telephone}
-                  {(j.whatsapp || j.email) && (
-                    <div style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>
-                      {j.whatsapp && <div>💬 {j.whatsapp}</div>}
-                      {j.email && <div>✉️ {j.email}</div>}
-                    </div>
+                  {j.email && (
+                    <div style={{ fontSize: 10.5, color: 'var(--text-dim)', marginTop: 2 }}>✉️ {j.email}</div>
                   )}
                 </td>
                 <td>{j.quartier}</td>
@@ -659,7 +656,13 @@ export default function Prospects() {
                     '—'
                   )}
                 </td>
-                <td style={{ fontWeight: 700, textAlign: 'center' }}>{scores.get(j.id) ?? 0}</td>
+                <td>
+                  {j.whatsapp ? (
+                    <span>💬 {j.whatsapp}</span>
+                  ) : (
+                    <span style={{ color: 'var(--text-dim)' }}>—</span>
+                  )}
+                </td>
                 <td onClick={(e) => e.stopPropagation()} style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                   <button
                     className="btn secondary small"
