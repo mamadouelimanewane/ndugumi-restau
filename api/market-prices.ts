@@ -1,7 +1,12 @@
-// Regroupe list/add/ocr/analyze dans un seul fichier (routage par ?action=) pour rester sous la
-// limite de 12 fonctions serverless du plan Vercel Hobby — même pattern que api/weekly-report.ts.
+// Regroupe list/add/ocr/analyze/webwatch dans un seul fichier (routage par ?action=) pour rester
+// sous la limite de 12 fonctions serverless du plan Vercel Hobby — même pattern que
+// api/weekly-report.ts.
 
 import { createClient } from '@supabase/supabase-js'
+
+// Durée max demandée pour cette fonction (utile pour ?action=webwatch, qui traite une longue
+// liste de produits) — Vercel plafonne selon le plan (jusqu'à 60s sur Hobby).
+export const config = { maxDuration: 60 }
 
 function getAdminClient() {
   const url = process.env.SUPABASE_URL
@@ -139,53 +144,154 @@ async function callPerplexity(question: string): Promise<{ content: string; cita
   return { content, citations: data.citations ?? [] }
 }
 
+// Liste large couvrant les besoins réels d'un restaurant à Dakar (pas seulement le catalogue
+// NDUGUMi) — étendue sur demande explicite pour couvrir toutes les catégories alimentaires.
 const WEB_WATCH_PRODUCTS = [
-  { produit: 'Riz brisé parfumé', unite: 'sac 25kg' },
-  { produit: 'Huile végétale', unite: 'bidon 20L' },
-  { produit: 'Oignon', unite: 'sac 25kg' },
-  { produit: 'Pomme de terre', unite: 'sac 25kg' },
-  { produit: 'Concentré de tomate', unite: 'carton' },
-  { produit: 'Sucre', unite: 'sac 50kg' },
+  // Céréales & féculents
+  { produit: 'Riz brisé parfumé', unite: 'sac 25kg', categorie: 'Céréales' },
+  { produit: 'Riz parfumé entier', unite: 'sac 25kg', categorie: 'Céréales' },
+  { produit: 'Mil', unite: 'sac 50kg', categorie: 'Céréales' },
+  { produit: 'Pain de boulangerie', unite: 'unité (baguette)', categorie: 'Céréales' },
+  { produit: 'Spaghetti / pâtes alimentaires', unite: 'carton', categorie: 'Céréales' },
+  { produit: 'Couscous', unite: 'sac 25kg', categorie: 'Céréales' },
+  // Huiles
+  { produit: 'Huile végétale', unite: 'bidon 20L', categorie: 'Huiles' },
+  { produit: "Huile d'arachide", unite: 'bidon 20L', categorie: 'Huiles' },
+  // Légumes
+  { produit: 'Oignon', unite: 'sac 25kg', categorie: 'Légumes' },
+  { produit: 'Pomme de terre', unite: 'sac 25kg', categorie: 'Légumes' },
+  { produit: 'Ail', unite: 'kg', categorie: 'Légumes' },
+  { produit: 'Gingembre', unite: 'kg', categorie: 'Légumes' },
+  { produit: 'Chou', unite: 'kg', categorie: 'Légumes' },
+  { produit: 'Carotte', unite: 'kg', categorie: 'Légumes' },
+  { produit: 'Aubergine', unite: 'kg', categorie: 'Légumes' },
+  { produit: 'Gombo', unite: 'kg', categorie: 'Légumes' },
+  { produit: 'Poivron', unite: 'kg', categorie: 'Légumes' },
+  { produit: 'Manioc', unite: 'kg', categorie: 'Légumes' },
+  // Fruits
+  { produit: 'Banane', unite: 'kg', categorie: 'Fruits' },
+  { produit: 'Mangue', unite: 'kg', categorie: 'Fruits' },
+  { produit: 'Orange', unite: 'kg', categorie: 'Fruits' },
+  { produit: 'Citron', unite: 'kg', categorie: 'Fruits' },
+  // Viandes
+  { produit: 'Poulet entier congelé', unite: 'carton 10 pièces', categorie: 'Viandes' },
+  { produit: 'Bœuf', unite: 'kg', categorie: 'Viandes' },
+  { produit: 'Mouton', unite: 'kg', categorie: 'Viandes' },
+  // Poissons
+  { produit: 'Thiof', unite: 'kg', categorie: 'Poissons' },
+  { produit: 'Yaboy (sardinelle)', unite: 'kg', categorie: 'Poissons' },
+  { produit: 'Capitaine', unite: 'kg', categorie: 'Poissons' },
+  // Fruits de mer
+  { produit: 'Crevettes', unite: 'kg', categorie: 'Fruits de mer' },
+  // Fromagerie
+  { produit: 'Fromage La Vache qui rit', unite: 'carton', categorie: 'Fromagerie' },
+  { produit: 'Lait en poudre', unite: 'carton', categorie: 'Fromagerie' },
+  { produit: 'Beurre', unite: 'kg', categorie: 'Fromagerie' },
+  { produit: 'Margarine', unite: 'kg', categorie: 'Fromagerie' },
+  { produit: 'Emmental râpé', unite: 'kg', categorie: 'Fromagerie' },
+  { produit: 'Yaourt', unite: 'carton', categorie: 'Fromagerie' },
+  { produit: 'Crème fraîche/crème liquide', unite: 'litre', categorie: 'Fromagerie' },
+  // Épicerie (issus notamment du catalogue Auchan importé le 21/07/2026)
+  { produit: 'Concentré de tomate', unite: 'carton', categorie: 'Épicerie' },
+  { produit: 'Sucre', unite: 'sac 50kg', categorie: 'Épicerie' },
+  { produit: 'Cube Maggi/Jumbo', unite: 'carton', categorie: 'Épicerie' },
+  { produit: 'Sel', unite: 'sac', categorie: 'Épicerie' },
+  { produit: 'Lentilles', unite: 'kg', categorie: 'Épicerie' },
+  { produit: 'Farine de blé', unite: 'sac 50kg', categorie: 'Épicerie' },
+  { produit: 'Café soluble', unite: 'carton', categorie: 'Épicerie' },
+  // Boissons
+  { produit: 'Eau minérale', unite: 'pack de 12', categorie: 'Boissons' },
+  { produit: 'Jus de fruits', unite: 'carton', categorie: 'Boissons' },
+  { produit: 'Eau gazeuse', unite: 'carton', categorie: 'Boissons' },
+  // Combustible
+  { produit: 'Bouteille de gaz 12kg', unite: 'bouteille', categorie: 'Combustible' },
+  // Produits locaux
+  { produit: 'Bissap séché', unite: 'kg', categorie: 'Produits locaux' },
+  { produit: 'Nététou', unite: 'kg', categorie: 'Produits locaux' },
 ]
 
-async function handleWebWatch(req: any, res: any) {
-  const supabase = getAdminClient()
-  const results: any[] = []
+async function processOneWebWatchProduct(
+  supabase: ReturnType<typeof getAdminClient>,
+  produit: string,
+  unite: string,
+  categorie: string
+) {
+  try {
+    const question = `Quel est le prix actuel (le plus récent possible) du produit "${produit}" (${unite}) à Dakar, Sénégal ? Cherche sur Auchan.sn en priorité, et sur d'autres sources web fiables sur les prix des marchés de Dakar (Tilène, Castors, Sandaga) si disponible. Réponds avec le prix en FCFA le plus précis trouvé et le nom du site/source où tu l'as trouvé. Si aucun prix fiable n'est trouvé, dis-le clairement.`
+    const { content, citations } = await callPerplexity(question)
 
-  for (const { produit, unite } of WEB_WATCH_PRODUCTS) {
-    try {
-      const question = `Quel est le prix actuel (le plus récent possible) du produit "${produit}" (${unite}) à Dakar, Sénégal ? Cherche sur Auchan.sn en priorité, et sur d'autres sources web fiables sur les prix des marchés de Dakar (Tilène, Castors, Sandaga) si disponible. Réponds avec le prix en FCFA le plus précis trouvé et le nom du site/source où tu l'as trouvé. Si aucun prix fiable n'est trouvé, dis-le clairement.`
-      const { content, citations } = await callPerplexity(question)
-
-      const extractPrompt = `Voici la réponse d'une recherche web sur le prix de "${produit}" à Dakar :
+    const extractPrompt = `Voici la réponse d'une recherche web sur le prix de "${produit}" à Dakar :
 """
 ${content.slice(0, 1500)}
 """
 Réponds UNIQUEMENT en JSON : {"prix": number ou null si aucun prix fiable trouvé, "source": string (nom du site/enseigne mentionné, sinon "Web")}. N'invente aucun prix qui ne soit pas explicitement mentionné dans le texte ci-dessus.`
-      const raw = await callDeepSeek([{ role: 'user', content: extractPrompt }], 150)
-      const parsed = safeJsonParse(raw) as { prix?: number | null; source?: string }
+    const raw = await callDeepSeek([{ role: 'user', content: extractPrompt }], 150)
+    const parsed = safeJsonParse(raw) as { prix?: number | null; source?: string }
 
-      if (parsed.prix && parsed.prix > 0) {
-        const { error } = await supabase.from('market_prices').insert({
-          produit,
-          categorie: null,
-          prix: parsed.prix,
-          unite,
-          source: `${parsed.source || 'Web'} (veille IA)`,
-          methode: 'web',
-          releve_par: 'Système (Perplexity)',
-        })
-        if (error) throw error
-        results.push({ produit, ok: true, prix: parsed.prix, source: parsed.source, citations })
-      } else {
-        results.push({ produit, ok: false, reason: 'Aucun prix fiable trouvé' })
-      }
-    } catch (e: any) {
-      results.push({ produit, ok: false, error: e?.message })
+    if (parsed.prix && parsed.prix > 0) {
+      const { error } = await supabase.from('market_prices').insert({
+        produit,
+        categorie,
+        prix: parsed.prix,
+        unite,
+        source: `${parsed.source || 'Web'} (veille IA)`,
+        methode: 'web',
+        releve_par: 'Système (Perplexity)',
+      })
+      if (error) throw error
+      return { produit, ok: true, prix: parsed.prix, source: parsed.source, citations }
     }
+    return { produit, ok: false, reason: 'Aucun prix fiable trouvé' }
+  } catch (e: any) {
+    return { produit, ok: false, error: e?.message }
+  }
+}
+
+// Traite les produits par petits lots en parallèle (pas un par un, pas tous à la fois) : la liste
+// complète dépasserait largement la limite de durée d'une fonction serverless si elle était
+// traitée séquentiellement (chaque produit fait 2 appels réseau — Perplexity puis DeepSeek —
+// qui prennent chacun plusieurs secondes). Le lot peut aussi être restreint via ?offset=&limit=
+// pour étaler manuellement le travail si la liste s'allonge encore.
+function getIsoWeekNumber(d: Date): number {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7))
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
+  return Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
+
+async function handleWebWatch(req: any, res: any) {
+  const supabase = getAdminClient()
+  const CRON_BATCH_SIZE = 16
+
+  let offset: number
+  let limit: number
+  if (req.query?.offset !== undefined || req.query?.limit !== undefined) {
+    // Appel explicite (bouton "Lancer la veille web IA", qui boucle lui-même sur plusieurs lots).
+    offset = Number(req.query?.offset) || 0
+    limit = Number(req.query?.limit) || WEB_WATCH_PRODUCTS.length
+  } else {
+    // Appel du Cron (une fois par semaine, sans paramètres) : traite un lot tournant plutôt que
+    // toute la liste d'un coup — trop long pour une seule invocation serverless (limite ~60s).
+    // Le lot change chaque semaine (basé sur le numéro de semaine ISO) pour couvrir progressivement
+    // tous les produits au fil des semaines plutôt que de rafraîchir seulement les premiers.
+    const totalBatches = Math.ceil(WEB_WATCH_PRODUCTS.length / CRON_BATCH_SIZE)
+    const weekIndex = getIsoWeekNumber(new Date()) % totalBatches
+    offset = weekIndex * CRON_BATCH_SIZE
+    limit = CRON_BATCH_SIZE
+  }
+  const batch = WEB_WATCH_PRODUCTS.slice(offset, offset + limit)
+
+  const CHUNK_SIZE = 8
+  const results: any[] = []
+  for (let i = 0; i < batch.length; i += CHUNK_SIZE) {
+    const chunk = batch.slice(i, i + CHUNK_SIZE)
+    const chunkResults = await Promise.all(
+      chunk.map(({ produit, unite, categorie }) => processOneWebWatchProduct(supabase, produit, unite, categorie))
+    )
+    results.push(...chunkResults)
   }
 
-  res.status(200).json({ results })
+  res.status(200).json({ results, total: WEB_WATCH_PRODUCTS.length, processed: batch.length })
 }
 
 async function handleOcr(req: any, res: any) {
@@ -250,17 +356,21 @@ invention :
 ${dataText}
 
 Analyse ces données et réponds UNIQUEMENT en JSON avec la clé "produits", un tableau d'objets, un par produit
-distinct présent dans les données ci-dessus :
+distinct présent dans les données ci-dessus. Réponses COURTES (moins de 15 mots par phrase) car la liste peut
+être longue :
 {"produit": string, "tendance": "hausse"|"baisse"|"stable", "variationApprox": string (ex: "+8%", "-3%", "0%",
 calculée en comparant le relevé le plus ancien et le plus récent de ce produit dans les données fournies),
-"recoupement": string (1-2 phrases comparant les différentes sources trouvées pour ce produit dans les données),
-"conseil": string (1 phrase d'action concrète pour un commercial NDUGUMi, basée uniquement sur ces vraies données)}
+"recoupement": string (une phrase courte comparant les sources trouvées pour ce produit),
+"conseil": string (une phrase courte d'action concrète pour un commercial NDUGUMi)}
 
 Ne calcule une tendance/variation que si au moins 2 relevés du même produit existent dans les données ; sinon
 mets "tendance":"stable" et "variationApprox":"" et concentre le conseil sur le seul relevé disponible. Ne
 mentionne aucune source ou donnée qui n'apparaît pas explicitement dans la liste ci-dessus.`
 
-  const raw = await callDeepSeek([{ role: 'user', content: prompt }], 900)
+  // max_tokens généreux : jusqu'à ~40 produits distincts à analyser en une seule réponse JSON.
+  // Une limite trop basse ici s'est avérée provoquer soit une réponse vide, soit un JSON tronqué
+  // (testé à 900 puis 3000 — toujours insuffisant avec des phrases longues sur ~35 produits).
+  const raw = await callDeepSeek([{ role: 'user', content: prompt }], 4000)
   const parsed = safeJsonParse(raw) as { produits?: any[] }
   res.status(200).json({ produits: parsed.produits ?? [] })
 }

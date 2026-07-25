@@ -215,15 +215,26 @@ export default function MarchePrices() {
   async function handleWebWatch() {
     setWebWatching(true)
     setWebWatchMessage(null)
+    const BATCH_SIZE = 16
+    let offset = 0
+    let total = 0
+    let found = 0
+    let processed = 0
     try {
-      const res = await fetch('/api/market-prices?action=webwatch')
-      const data = await res.json()
-      if (!res.ok) {
-        setWebWatchMessage(data.error || 'Erreur lors de la veille web.')
-        return
-      }
-      const found = (data.results || []).filter((r: any) => r.ok).length
-      const total = (data.results || []).length
+      do {
+        setWebWatchMessage(`Recherche en cours… (${processed}${total ? `/${total}` : ''} produits traités)`)
+        const res = await fetch(`/api/market-prices?action=webwatch&offset=${offset}&limit=${BATCH_SIZE}`)
+        const data = await res.json()
+        if (!res.ok) {
+          setWebWatchMessage(data.error || 'Erreur lors de la veille web.')
+          return
+        }
+        total = data.total ?? 0
+        found += (data.results || []).filter((r: any) => r.ok).length
+        processed += data.processed ?? 0
+        offset += BATCH_SIZE
+      } while (offset < total)
+
       setWebWatchMessage(`${found}/${total} prix trouvés et enregistrés via la veille web (Auchan.sn + sources fiables).`)
       await loadEntries()
     } catch (e: any) {
@@ -254,18 +265,44 @@ export default function MarchePrices() {
     }
     setAnalyzing(true)
     setAnalysisError(null)
+    setAnalysis(null)
     try {
-      const res = await fetch('/api/market-prices?action=analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ entries: filtered }),
-      })
-      const data = await res.json()
-      if (!res.ok) {
-        setAnalysisError(data.error || "Erreur lors de l'analyse.")
-        return
+      // Regroupe par produit distinct puis découpe par lots : analyser des centaines de relevés
+      // en un seul appel dépasse la durée que DeepSeek met à générer la réponse (constaté avec
+      // seulement 36 relevés déjà). Chaque lot ne contient qu'un sous-ensemble de produits
+      // distincts (toutes leurs entrées historiques), pour rester rapide et fiable.
+      const distinctProducts = Array.from(new Set(filtered.map((e) => e.produit)))
+      const CHUNK_SIZE = 8
+      const allResults: ProductAnalysis[] = []
+      let failedChunks = 0
+      for (let i = 0; i < distinctProducts.length; i += CHUNK_SIZE) {
+        const productsChunk = new Set(distinctProducts.slice(i, i + CHUNK_SIZE))
+        const entriesChunk = filtered.filter((e) => productsChunk.has(e.produit))
+        try {
+          const res = await fetch('/api/market-prices?action=analyze', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ entries: entriesChunk }),
+          })
+          const data = await res.json()
+          if (!res.ok) {
+            failedChunks++
+          } else {
+            allResults.push(...(data.produits || []))
+          }
+        } catch {
+          failedChunks++
+        }
+        setAnalysis([...allResults])
+        setAnalysisError(
+          `Analyse en cours… ${allResults.length}/${distinctProducts.length} produits traités${failedChunks > 0 ? ` (${failedChunks} lot(s) échoué(s), ignorés)` : ''}`
+        )
       }
-      setAnalysis(data.produits)
+      setAnalysisError(
+        failedChunks > 0
+          ? `Terminé : ${allResults.length}/${distinctProducts.length} produits analysés (${failedChunks} lot(s) ont échoué et ont été ignorés — relancez l'analyse pour réessayer).`
+          : null
+      )
     } catch (e: any) {
       setAnalysisError(e?.message || 'Impossible de contacter le serveur.')
     } finally {
