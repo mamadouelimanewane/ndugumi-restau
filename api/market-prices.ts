@@ -336,6 +336,7 @@ N'invente aucune ligne ni aucun prix qui ne soit pas explicitement mentionné da
         source: `${l.source} (recherche IA)`,
         methode: 'web',
         releve_par: 'Système (Perplexity)',
+        disponibilite: l.disponibilite,
       })
     }
 

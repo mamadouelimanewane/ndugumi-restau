@@ -43,10 +43,45 @@ const QUIZ_QUESTIONS: QuizQuestion[] = [
   },
 ]
 
+interface ChatEntry {
+  question: string
+  reponse: string
+}
+
 export default function Academie() {
-  const [activeTab, setActiveTab] = useState<'arguments' | 'wolof' | 'quiz'>('arguments')
+  const [activeTab, setActiveTab] = useState<'arguments' | 'wolof' | 'quiz' | 'assistant'>('arguments')
   const [quizScores, setQuizScores] = useState<Record<number, number>>({})
   const [showResults, setShowResults] = useState(false)
+
+  const [chatQuestion, setChatQuestion] = useState('')
+  const [chatHistory, setChatHistory] = useState<ChatEntry[]>([])
+  const [chatLoading, setChatLoading] = useState(false)
+  const [chatError, setChatError] = useState<string | null>(null)
+
+  async function handleAskAssistant() {
+    const question = chatQuestion.trim()
+    if (!question) return
+    setChatLoading(true)
+    setChatError(null)
+    try {
+      const res = await fetch('/api/ai-academie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setChatError(data.error || 'Erreur lors de la génération de la réponse.')
+        return
+      }
+      setChatHistory((prev) => [...prev, { question, reponse: data.reponse }])
+      setChatQuestion('')
+    } catch (e: any) {
+      setChatError(e?.message || 'Impossible de contacter le serveur.')
+    } finally {
+      setChatLoading(false)
+    }
+  }
 
   function handleSelectAnswer(questionIdx: number, optionIdx: number) {
     setQuizScores({ ...quizScores, [questionIdx]: optionIdx })
@@ -78,6 +113,9 @@ export default function Academie() {
         </button>
         <button className={activeTab === 'quiz' ? 'btn' : 'btn secondary'} onClick={() => setActiveTab('quiz')}>
           🏆 Test de Connaissances / Quiz
+        </button>
+        <button className={activeTab === 'assistant' ? 'btn' : 'btn secondary'} onClick={() => setActiveTab('assistant')}>
+          🤖 Assistant IA
         </button>
       </div>
 
@@ -191,6 +229,46 @@ export default function Academie() {
                 Score : {scoreCount} / {QUIZ_QUESTIONS.length} {scoreCount === QUIZ_QUESTIONS.length ? '🥇 Excellent (Certifié Commercial Expert !)' : '👍 Bon effort !'}
               </strong>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4 : ASSISTANT IA */}
+      {activeTab === 'assistant' && (
+        <div className="panel">
+          <h3>🤖 Assistant IA — Réponses aux Objections & Wolof</h3>
+          <p style={{ fontSize: 12.5, color: 'var(--text-dim)', marginBottom: 12 }}>
+            Posez une question terrain (ex : "que répondre si le client dit que Sandaga est moins cher ?") —
+            l'assistant s'appuie uniquement sur les fiches ci-dessus, sans inventer d'argument.
+          </p>
+
+          {chatHistory.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 16 }}>
+              {chatHistory.map((c, i) => (
+                <div key={i} style={{ background: '#f9fafb', padding: 12, borderRadius: 8, border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 12.5, fontWeight: 700, color: '#7a1f1f', marginBottom: 6 }}>❓ {c.question}</div>
+                  <div style={{ fontSize: 13, whiteSpace: 'pre-wrap' }}>{c.reponse}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {chatError && (
+            <div style={{ fontSize: 12.5, color: 'var(--danger, #c0392b)', marginBottom: 10 }}>{chatError}</div>
+          )}
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input
+              type="text"
+              value={chatQuestion}
+              onChange={(e) => setChatQuestion(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !chatLoading) handleAskAssistant() }}
+              placeholder="Ex : comment répondre si le client dit qu'il n'a pas le temps de commander sur l'appli ?"
+              style={{ flex: '1 1 320px' }}
+            />
+            <button className="btn primary" onClick={handleAskAssistant} disabled={chatLoading || !chatQuestion.trim()}>
+              {chatLoading ? 'Réflexion…' : 'Demander'}
+            </button>
           </div>
         </div>
       )}

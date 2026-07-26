@@ -1,7 +1,14 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useCrmStore } from '../store/useCrmStore'
 import type { Product } from '../types'
 import ProductDetailModal from '../components/ProductDetailModal'
+
+const RUPTURE_LOOKBACK_DAYS = 21
+
+interface DuplicateGroup {
+  ids: string[]
+  raison: string
+}
 
 function emptyDraft(): Omit<Product, 'id'> {
   return { nom: '', categorie: '', prixUnitaire: 0, unite: '', description: '', origine: '', stockDispo: 0, minimumCommande: 1, fournisseur: '' }
@@ -20,6 +27,32 @@ export default function Catalogue() {
   const [categorieFilter, setCategorieFilter] = useState('')
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
+
+  const [ruptureNames, setRuptureNames] = useState<Set<string>>(new Set())
+  const [scanningDuplicates, setScanningDuplicates] = useState(false)
+  const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[] | null>(null)
+  const [duplicateError, setDuplicateError] = useState<string | null>(null)
+
+  useEffect(() => {
+    async function loadRuptures() {
+      try {
+        const res = await fetch('/api/market-prices')
+        const data = await res.json()
+        const entries = (data.entries ?? []) as { produit: string; disponibilite?: string | null; created_at: string }[]
+        const cutoff = Date.now() - RUPTURE_LOOKBACK_DAYS * 86400000
+        const names = new Set<string>()
+        for (const e of entries) {
+          if (e.disponibilite === 'rupture' && new Date(e.created_at).getTime() >= cutoff) {
+            names.add(e.produit.toLowerCase())
+          }
+        }
+        setRuptureNames(names)
+      } catch (e) {
+        console.error('Erreur chargement disponibilité', e)
+      }
+    }
+    loadRuptures()
+  }, [])
 
   const list = useMemo(() => Object.values(products).sort((a, b) => a.nom.localeCompare(b.nom)), [products])
 
@@ -75,6 +108,55 @@ export default function Catalogue() {
     if (confirm(`Supprimer « ${p.nom} » du catalogue ?`)) removeProduct(p.id)
   }
 
+  function isRupture(p: Product): boolean {
+    return ruptureNames.has(p.nom.toLowerCase())
+  }
+
+  async function handleScanDuplicates() {
+    setScanningDuplicates(true)
+    setDuplicateError(null)
+    setDuplicateGroups(null)
+    try {
+      // Envoyer les 210 produits en un seul appel dépasse trop souvent le temps de génération de
+      // DeepSeek (constaté aussi sur l'analyse de tendances du Baromètre Prix) : on découpe par
+      // lots, chaque lot ratant les doublons potentiels avec un produit d'un autre lot — compromis
+      // accepté ailleurs dans ce projet pour la même contrainte.
+      const CHUNK_SIZE = 35
+      const allGroups: DuplicateGroup[] = []
+      let failedChunks = 0
+      for (let i = 0; i < list.length; i += CHUNK_SIZE) {
+        const chunk = list.slice(i, i + CHUNK_SIZE)
+        try {
+          const res = await fetch('/api/ai-price-compare?action=duplicates', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              produits: chunk.map((p) => ({ id: p.id, nom: p.nom, categorie: p.categorie, unite: p.unite })),
+            }),
+          })
+          const data = await res.json()
+          if (!res.ok) {
+            failedChunks++
+          } else {
+            allGroups.push(...(data.groupes ?? []))
+          }
+        } catch {
+          failedChunks++
+        }
+        setDuplicateGroups([...allGroups])
+      }
+      if (failedChunks > 0) {
+        setDuplicateError(`${failedChunks} lot(s) sur ${Math.ceil(list.length / CHUNK_SIZE)} ont échoué (réponse IA vide) — relancez le scan pour réessayer sur l'ensemble du catalogue.`)
+      }
+    } finally {
+      setScanningDuplicates(false)
+    }
+  }
+
+  function handleDismissDuplicateGroup(idx: number) {
+    setDuplicateGroups((prev) => (prev ? prev.filter((_, i) => i !== idx) : prev))
+  }
+
   // Reload forcé de la page pour purger le cache PWA si l'utilisateur ne voyait pas les changements
   function handleForceReload() {
     if ('serviceWorker' in navigator) {
@@ -102,11 +184,54 @@ export default function Catalogue() {
           <button className="btn secondary" onClick={handleForceReload} title="Purger le cache et forcer la mise à jour">
             🔄 Rafraîchir l'application
           </button>
+          <button className="btn secondary" onClick={handleScanDuplicates} disabled={scanningDuplicates} title="Analyse le catalogue par IA pour repérer les doublons probables">
+            {scanningDuplicates ? '🤖 Scan en cours…' : '🤖 Scanner les doublons (IA)'}
+          </button>
           <button className="btn" onClick={() => setShowAdd((v) => !v)}>
             {showAdd ? 'Fermer' : '+ Nouveau produit'}
           </button>
         </div>
       </div>
+
+      {duplicateError && (
+        <div className="panel" style={{ borderLeft: '4px solid var(--danger, #c0392b)', marginBottom: 16 }}>
+          {duplicateError}
+        </div>
+      )}
+
+      {duplicateGroups && (
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <h3 style={{ margin: '0 0 4px' }}>🤖 Doublons probables détectés</h3>
+          {duplicateGroups.length === 0 ? (
+            <p style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Aucun doublon probable détecté sur les {list.length} produits.</p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 10 }}>
+              {duplicateGroups.map((g, i) => (
+                <div key={i} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
+                  <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 8px' }}>{g.raison}</p>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {g.ids.map((id) => {
+                      const p = products[id]
+                      if (!p) return null
+                      return (
+                        <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 6, border: '1px solid var(--border)', borderRadius: 6, padding: '4px 8px', fontSize: 12 }}>
+                          <span>{p.nom} <span style={{ color: 'var(--text-dim)' }}>({p.prixUnitaire.toLocaleString('fr-FR')} FCFA / {p.unite})</span></span>
+                          <button className="btn secondary small" onClick={() => handleRemove(p)} style={{ padding: '2px 6px', fontSize: 11 }}>
+                            🗑️
+                          </button>
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <button className="btn secondary small" style={{ marginTop: 8 }} onClick={() => handleDismissDuplicateGroup(i)}>
+                    Ignorer ce groupe
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {showAdd && (
         <div className="panel">
@@ -224,6 +349,11 @@ export default function Catalogue() {
                       🖼️ {mediaCount} média(s)
                     </div>
                   )}
+                  {isRupture(p) && (
+                    <div style={{ position: 'absolute', top: 8, left: 8, background: '#dc2626', color: '#fff', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12 }}>
+                      ⚠️ Rupture signalée
+                    </div>
+                  )}
                 </div>
 
                 {/* Infos produit */}
@@ -232,7 +362,12 @@ export default function Catalogue() {
                     <h3 style={{ margin: '0 0 4px', fontSize: 15, color: 'var(--primary, #7a1f1f)', cursor: 'pointer' }} onClick={() => setSelectedProductId(p.id)}>
                       {p.nom}
                     </h3>
-                    <span className="zone-tag">{p.categorie}</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+                      <span className="zone-tag">{p.categorie}</span>
+                      {isRupture(p) && (
+                        <span style={{ fontSize: 10.5, fontWeight: 700, color: '#dc2626' }}>⚠️ Rupture récente</span>
+                      )}
+                    </div>
                   </div>
 
                   <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', marginTop: 4 }}>
@@ -369,6 +504,9 @@ export default function Catalogue() {
                             <span style={{ fontSize: 11, color: 'var(--text-dim)', marginLeft: 6 }}>
                               ({p.origine})
                             </span>
+                          )}
+                          {isRupture(p) && (
+                            <span style={{ fontSize: 10.5, fontWeight: 700, color: '#dc2626', marginLeft: 6 }}>⚠️ Rupture</span>
                           )}
                         </td>
                         <td>

@@ -4,7 +4,7 @@ import L from 'leaflet'
 import { MapContainer, TileLayer, CircleMarker, Marker, Polyline, Popup, useMap } from 'react-leaflet'
 import { useCrmStore } from '../store/useCrmStore'
 import { joinProspects } from '../utils/joined'
-import { jitteredCoords, DAKAR_CENTER } from '../data/quartierCoords'
+import { jitteredCoords, DAKAR_CENTER, QUARTIER_COORDS } from '../data/quartierCoords'
 import { nearestNeighborRoute, type RouteStop } from '../utils/route'
 import { STATUTS, STATUT_LABELS, STATUT_COLORS, type Statut } from '../types'
 
@@ -53,6 +53,7 @@ export default function Carte() {
 
   const joined = useMemo(() => joinProspects(restaurants, prospects), [restaurants, prospects])
 
+  const [mapMode, setMapMode] = useState<'points' | 'densite'>('points')
   const [zoneFilter, setZoneFilter] = useState('')
   const [quartierFilter, setQuartierFilter] = useState('')
   const [statutFilter, setStatutFilter] = useState<Statut | ''>('')
@@ -94,6 +95,28 @@ export default function Carte() {
       return true
     })
   }, [joined, zoneFilter, quartierFilter, statutFilter, ndugumiFilter, agentFilter])
+
+  const densityByQuartier = useMemo(() => {
+    // Coverage calculée sur l'ensemble des restaurants du périmètre zone choisi (pas les autres
+    // filtres statut/agent/NDUGUMi, qui n'ont pas de sens pour une mesure de couverture globale).
+    const base = zoneFilter ? joined.filter((j) => j.zone === zoneFilter) : joined
+    const byQuartier = new Map<string, { total: number; prospected: number }>()
+    for (const j of base) {
+      const entry = byQuartier.get(j.quartier) ?? { total: 0, prospected: 0 }
+      entry.total += 1
+      if (j.crm.statut !== 'nouveau') entry.prospected += 1
+      byQuartier.set(j.quartier, entry)
+    }
+    return Array.from(byQuartier.entries())
+      .filter(([quartier]) => QUARTIER_COORDS[quartier])
+      .map(([quartier, { total, prospected }]) => ({
+        quartier,
+        total,
+        prospected,
+        taux: total > 0 ? prospected / total : 0,
+        coords: QUARTIER_COORDS[quartier],
+      }))
+  }, [joined, zoneFilter])
 
   const [route, setRoute] = useState<RouteStop[] | null>(null)
 
@@ -177,6 +200,13 @@ export default function Carte() {
         <button className="btn secondary" onClick={handleComputeRoute}>
           Calculer l'itinéraire du jour
         </button>
+        <button
+          className={mapMode === 'densite' ? 'btn' : 'btn secondary'}
+          onClick={() => setMapMode((m) => (m === 'densite' ? 'points' : 'densite'))}
+          title="Bascule vers une vue par densité de couverture (prospecté vs non-prospecté) par quartier"
+        >
+          🔥 Vue densité par quartier
+        </button>
         {(zoneFilter || quartierFilter || statutFilter || ndugumiFilter || agentFilter || route) && (
           <button className="btn secondary" onClick={resetFilters}>
             🔄 Réinitialiser les filtres
@@ -218,26 +248,44 @@ export default function Carte() {
       )}
 
       <div className="panel" style={{ padding: 12 }}>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12, fontSize: 12, alignItems: 'center' }}>
-          <span style={{ fontWeight: 700 }}>Légende :</span>
-          {STATUTS.map((s) => (
-            <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-              <span
-                style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: '50%',
-                  background: STATUT_COLORS[s],
-                  display: 'inline-block',
-                }}
-              />
-              {STATUT_LABELS[s]}
+        {mapMode === 'points' ? (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12, fontSize: 12, alignItems: 'center' }}>
+            <span style={{ fontWeight: 700 }}>Légende :</span>
+            {STATUTS.map((s) => (
+              <span key={s} style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                <span
+                  style={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: '50%',
+                    background: STATUT_COLORS[s],
+                    display: 'inline-block',
+                  }}
+                />
+                {STATUT_LABELS[s]}
+              </span>
+            ))}
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)' }}>
+              📍 Marqueur épais = GPS Réel | ⭕ Cercle classique = Quartier estimé
             </span>
-          ))}
-          <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)' }}>
-            📍 Marqueur épais = GPS Réel | ⭕ Cercle classique = Quartier estimé
-          </span>
-        </div>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, marginBottom: 12, fontSize: 12, alignItems: 'center' }}>
+            <span style={{ fontWeight: 700 }}>Légende (taux de couverture prospection) :</span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#dc2626', display: 'inline-block' }} /> Faible (&lt;25%)
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }} /> Moyen (25-60%)
+            </span>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 12, height: 12, borderRadius: '50%', background: '#16a34a', display: 'inline-block' }} /> Bon (&gt;60%)
+            </span>
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-dim)' }}>
+              Taille du cercle = nombre de restaurants répertoriés dans le quartier
+            </span>
+          </div>
+        )}
 
         <div style={{ height: '65vh', minHeight: 400, borderRadius: 8, overflow: 'hidden', position: 'relative' }}>
           <MapContainer
@@ -272,7 +320,35 @@ export default function Carte() {
                   </Popup>
                 </Marker>
               ))}
-            {!route && filtered.map((j) => {
+            {mapMode === 'densite' &&
+              densityByQuartier.map((d) => {
+                const color = d.taux < 0.25 ? '#dc2626' : d.taux < 0.6 ? '#f59e0b' : '#16a34a'
+                const radius = 10 + Math.min(d.total, 40) * 1.2
+                return (
+                  <CircleMarker
+                    key={d.quartier}
+                    center={d.coords}
+                    radius={radius}
+                    pathOptions={{ color, fillColor: color, fillOpacity: 0.45, weight: 2 }}
+                  >
+                    <Popup>
+                      <div style={{ minWidth: 180 }}>
+                        <strong>{d.quartier}</strong>
+                        <div style={{ fontSize: 12, margin: '4px 0' }}>
+                          {d.prospected} / {d.total} restaurants prospectés ({Math.round(d.taux * 100)}%)
+                        </div>
+                        <button
+                          className="btn small primary"
+                          onClick={() => navigate(`/prospects?quartier=${encodeURIComponent(d.quartier)}`)}
+                        >
+                          Voir les restaurants
+                        </button>
+                      </div>
+                    </Popup>
+                  </CircleMarker>
+                )
+              })}
+            {mapMode === 'points' && !route && filtered.map((j) => {
               const coords = getCoords(j)
               const isExactGps = Boolean(j.exactLat && j.exactLng)
               return (

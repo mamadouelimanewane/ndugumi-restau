@@ -46,7 +46,7 @@ async function checkRateLimit(req: any, res: any, endpoint: string): Promise<boo
   return true
 }
 
-async function callDeepSeek(messages: { role: 'system' | 'user'; content: string }[]): Promise<string> {
+async function callDeepSeekOnce(messages: { role: 'system' | 'user'; content: string }[], maxTokens: number): Promise<string> {
   const apiKey = process.env.DEEPSEEK_API_KEY
   if (!apiKey) {
     throw new Error('DEEPSEEK_API_KEY non configurée côté serveur')
@@ -62,7 +62,7 @@ async function callDeepSeek(messages: { role: 'system' | 'user'; content: string
       model: 'deepseek-v4-flash',
       messages,
       temperature: 0.2,
-      max_tokens: 1500,
+      max_tokens: maxTokens,
       response_format: { type: 'json_object' },
     }),
   })
@@ -78,9 +78,69 @@ async function callDeepSeek(messages: { role: 'system' | 'user'; content: string
   return content
 }
 
+// Une réponse vide arrive occasionnellement (constaté sur d'autres endpoints IA de ce projet,
+// ~1/3 des appels) sans rapport avec le contenu envoyé — une seconde tentative suffit en pratique.
+async function callDeepSeek(messages: { role: 'system' | 'user'; content: string }[], maxTokens = 1500): Promise<string> {
+  try {
+    return await callDeepSeekOnce(messages, maxTokens)
+  } catch (e: any) {
+    if (e?.message === 'Réponse DeepSeek vide') {
+      return await callDeepSeekOnce(messages, maxTokens)
+    }
+    throw e
+  }
+}
+
 interface RequestBody {
   ocrText: string
   ndugumiProducts: { nom: string; prixUnitaire: number; unite: string }[]
+}
+
+interface DuplicatesRequestBody {
+  produits: { id: string; nom: string; categorie: string; unite: string }[]
+}
+
+async function handleDuplicates(req: any, res: any) {
+  if (!(await checkRateLimit(req, res, 'ai-price-compare-duplicates'))) return
+
+  const body = req.body as DuplicatesRequestBody
+  const produits = body.produits || []
+  if (produits.length === 0) {
+    res.status(400).json({ error: 'Catalogue vide.' })
+    return
+  }
+
+  const listeText = produits.map((p) => `${p.id} | ${p.nom} | ${p.categorie} | ${p.unite}`).join('\n')
+
+  const prompt = `Voici le catalogue produits réel d'une entreprise de livraison de marché à Dakar (id | nom | catégorie | unité), un produit par ligne :
+"""
+${listeText}
+"""
+
+Repère les groupes de produits qui semblent être des DOUBLONS ou quasi-doublons (même produit réel, nom
+légèrement différent ou variante d'enseigne — ex: "Riz brisé parfumé" et "Auchan riz brisé parfumé" avec la
+même unité, ou "Orange" et "Orange import" si ambigu). Ne signale QUE des groupes où tu es raisonnablement
+confiant qu'il s'agit du même produit — deux produits différents avec juste un nom similaire ne comptent pas
+(ex: "Riz brisé parfumé" et "Riz parfumé entier" sont différents, pas des doublons).
+
+Réponds UNIQUEMENT en JSON avec la clé "groupes", un tableau de {"ids": string[] (2 ids ou plus, tirés
+exactement de la liste ci-dessus), "raison": string (une phrase courte expliquant pourquoi ce sont des
+doublons probables)}. Si aucun doublon probable, renvoie "groupes": [].`
+
+  const raw = await callDeepSeek([{ role: 'user', content: prompt }], 2000)
+  let parsed: { groupes?: { ids?: string[]; raison?: string }[] }
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error('Réponse IA incomplète ou mal formée — réessayez.')
+  }
+
+  const validIds = new Set(produits.map((p) => p.id))
+  const groupes = (parsed.groupes ?? [])
+    .map((g) => ({ ids: (g.ids ?? []).filter((id) => validIds.has(id)), raison: g.raison || '' }))
+    .filter((g) => g.ids.length >= 2)
+
+  res.status(200).json({ groupes })
 }
 
 export default async function handler(req: any, res: any) {
@@ -89,9 +149,11 @@ export default async function handler(req: any, res: any) {
     return
   }
 
-  if (!(await checkRateLimit(req, res, 'ai-price-compare'))) return
-
   try {
+    if (req.query?.action === 'duplicates') return await handleDuplicates(req, res)
+
+    if (!(await checkRateLimit(req, res, 'ai-price-compare'))) return
+
     const body = req.body as RequestBody
     const ocrText = (body.ocrText || '').trim()
     if (!ocrText) {
