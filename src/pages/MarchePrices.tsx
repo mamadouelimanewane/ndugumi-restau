@@ -3,6 +3,30 @@ import { useCrmStore } from '../store/useCrmStore'
 import { waLinkWithText } from '../utils/phone'
 import { extractTextFromImage } from '../utils/ocr'
 
+function normalizeSourceName(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+}
+
+// Les citations renvoyées par Perplexity sont au niveau du produit (pas une par ligne) — on
+// retrouve la plus probable pour une source donnée en comparant son nom de domaine au libellé
+// de la source. Si aucune ne correspond, on retombe sur une recherche Google (toujours cliquable,
+// "au cas où" la citation directe manque). Même logique que Catalogue.tsx.
+function findSourceLink(source: string, citations: string[], fallbackQuery: string): string {
+  const normalizedSource = normalizeSourceName(source)
+  for (const url of citations) {
+    try {
+      const host = new URL(url).hostname.replace(/^www\./, '')
+      const domainWord = host.split('.')[0]
+      if (domainWord.length >= 3 && normalizedSource.includes(normalizeSourceName(domainWord))) {
+        return url
+      }
+    } catch {
+      // URL invalide, ignorée
+    }
+  }
+  return `https://www.google.com/search?q=${encodeURIComponent(fallbackQuery)}`
+}
+
 const CATEGORIES = [
   'Céréales',
   'Huiles',
@@ -43,6 +67,7 @@ interface ProductAnalysis {
 
 interface CompareLine {
   source: string
+  libelle: string
   prix: number | null
   unite: string
   disponibilite: 'disponible' | 'rupture' | 'non précisé'
@@ -561,14 +586,24 @@ Données basées sur les relevés terrain réels de l'équipe NDUGUMi.`
                       <thead>
                         <tr>
                           <th>Source</th>
+                          <th>Libellé produit</th>
                           <th>Prix</th>
                           <th>Disponibilité</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {r.lignes.map((l, i) => (
+                        {r.lignes.map((l, i) => {
+                          const sourceUrl = findSourceLink(l.source, r.citations, `${l.source} ${l.libelle || r.produit}`)
+                          return (
                           <tr key={i}>
-                            <td>{l.source}</td>
+                            <td>
+                              <a href={sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent, #c0793a)', textDecoration: 'underline' }} title="Ouvrir le site de l'entreprise (ou une recherche Google si le lien direct est incertain)">
+                                {l.source} 🔗
+                              </a>
+                            </td>
+                            <td style={{ fontSize: 12.5, fontWeight: l.libelle ? 700 : 400, color: l.libelle ? 'var(--primary, #7a1f1f)' : 'var(--text-dim)' }}>
+                              {l.libelle || '— Non précisé'}
+                            </td>
                             <td style={{ fontWeight: 700, color: l.prix === minPrix ? 'var(--success, #1e8e3e)' : undefined }}>
                               {l.prix !== null ? `${l.prix.toLocaleString('fr-FR')} FCFA${l.unite ? ` / ${l.unite}` : ''}` : '—'}
                               {l.prix === minPrix && prixValides.length > 1 ? ' 🏆' : ''}
@@ -577,7 +612,8 @@ Données basées sur les relevés terrain réels de l'équipe NDUGUMi.`
                               {l.disponibilite === 'disponible' ? '✅ Disponible' : l.disponibilite === 'rupture' ? '❌ Rupture' : '— Non précisé'}
                             </td>
                           </tr>
-                        ))}
+                          )
+                        })}
                       </tbody>
                     </table>
                   )}
