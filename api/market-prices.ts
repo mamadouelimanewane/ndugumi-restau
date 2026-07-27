@@ -66,6 +66,7 @@ async function callDeepSeekOnce(messages: { role: 'system' | 'user'; content: st
     },
     body: JSON.stringify({
       model: 'deepseek-v4-flash',
+      thinking: { type: 'disabled' },
       messages,
       temperature: 0.3,
       max_tokens: maxTokens,
@@ -310,7 +311,7 @@ mentionné dans le texte ci-dessus (peut être 1 seule ligne si une seule source
 {"source": string (nom du site/enseigne/marché mentionné), "prix": number ou null si aucun prix chiffré pour
 cette source, "unite": string (ex: "kg", "sac 25kg", "unité"), "disponibilite": "disponible"|"rupture"|"non précisé"}
 N'invente aucune ligne ni aucun prix qui ne soit pas explicitement mentionné dans le texte ci-dessus.`
-    const raw = await callDeepSeek([{ role: 'user', content: extractPrompt }], 500)
+    const raw = await callDeepSeek([{ role: 'user', content: extractPrompt }], 900)
     const parsed = safeJsonParse(raw) as {
       lignes?: { source?: string; prix?: number | null; unite?: string; disponibilite?: string }[]
     }

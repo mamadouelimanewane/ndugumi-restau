@@ -68,6 +68,7 @@ async function callDeepSeek(messages: ChatMessage[], opts: CallOptions = {}): Pr
     },
     body: JSON.stringify({
       model: 'deepseek-v4-flash',
+      thinking: { type: 'disabled' },
       messages,
       temperature: opts.temperature ?? 0.5,
       max_tokens: opts.maxTokens ?? 600,

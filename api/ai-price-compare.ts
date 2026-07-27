@@ -60,6 +60,7 @@ async function callDeepSeekOnce(messages: { role: 'system' | 'user'; content: st
     },
     body: JSON.stringify({
       model: 'deepseek-v4-flash',
+      thinking: { type: 'disabled' },
       messages,
       temperature: 0.2,
       max_tokens: maxTokens,
