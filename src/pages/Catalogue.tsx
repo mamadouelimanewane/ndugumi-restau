@@ -4,10 +4,34 @@ import type { Product } from '../types'
 import ProductDetailModal from '../components/ProductDetailModal'
 
 const RUPTURE_LOOKBACK_DAYS = 21
+const MAX_WEB_SEARCH_PRODUCTS = 5
 
 interface DuplicateGroup {
   ids: string[]
   raison: string
+}
+
+interface WebSearchLine {
+  source: string
+  prix: number | null
+  unite: string
+  disponibilite: 'disponible' | 'rupture' | 'non précisé'
+}
+
+interface WebSearchResult {
+  produit: string
+  lignes: WebSearchLine[]
+  error: string | null
+}
+
+// Recherche approximative : insensible à la casse et aux accents, tolère un ordre de mots
+// différent et une saisie partielle (ex. "riz brise" retrouve "Riz brisé parfumé").
+function normalize(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
 }
 
 function emptyDraft(): Omit<Product, 'id'> {
@@ -25,6 +49,7 @@ export default function Catalogue() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editDraft, setEditDraft] = useState(emptyDraft())
   const [categorieFilter, setCategorieFilter] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
 
@@ -32,6 +57,12 @@ export default function Catalogue() {
   const [scanningDuplicates, setScanningDuplicates] = useState(false)
   const [duplicateGroups, setDuplicateGroups] = useState<DuplicateGroup[] | null>(null)
   const [duplicateError, setDuplicateError] = useState<string | null>(null)
+
+  const [showWebSearch, setShowWebSearch] = useState(false)
+  const [webSearchInput, setWebSearchInput] = useState('')
+  const [webSearching, setWebSearching] = useState(false)
+  const [webSearchResults, setWebSearchResults] = useState<WebSearchResult[] | null>(null)
+  const [webSearchError, setWebSearchError] = useState<string | null>(null)
 
   useEffect(() => {
     async function loadRuptures() {
@@ -61,10 +92,18 @@ export default function Catalogue() {
     return Array.from(set).sort()
   }, [list])
 
-  const filtered = useMemo(
-    () => (categorieFilter ? list.filter((p) => p.categorie === categorieFilter) : list),
-    [list, categorieFilter]
-  )
+  const filtered = useMemo(() => {
+    let result = categorieFilter ? list.filter((p) => p.categorie === categorieFilter) : list
+    const q = normalize(searchQuery)
+    if (q) {
+      const words = q.split(/\s+/).filter(Boolean)
+      result = result.filter((p) => {
+        const haystack = normalize(`${p.nom} ${p.categorie} ${p.fournisseur || ''}`)
+        return words.every((w) => haystack.includes(w))
+      })
+    }
+    return result
+  }, [list, categorieFilter, searchQuery])
 
   function handleAdd() {
     if (!draft.nom.trim() || draft.prixUnitaire <= 0) return
@@ -157,6 +196,53 @@ export default function Catalogue() {
     setDuplicateGroups((prev) => (prev ? prev.filter((_, i) => i !== idx) : prev))
   }
 
+  async function handleWebSearch() {
+    const produits = webSearchInput
+      .split(/[,\n]/)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .slice(0, MAX_WEB_SEARCH_PRODUCTS)
+
+    if (produits.length === 0) {
+      setWebSearchError('Indiquez au moins un nom de produit.')
+      return
+    }
+
+    setWebSearching(true)
+    setWebSearchError(null)
+    setWebSearchResults(null)
+    try {
+      const res = await fetch('/api/market-prices?action=compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ produits }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setWebSearchError(data.error || 'Erreur lors de la recherche.')
+        return
+      }
+      setWebSearchResults(data.results ?? [])
+    } catch (e: any) {
+      setWebSearchError(e?.message || 'Impossible de contacter le serveur.')
+    } finally {
+      setWebSearching(false)
+    }
+  }
+
+  function handleAddFromWebResult(produit: string, l: WebSearchLine) {
+    if (l.prix === null) return
+    addProduct({
+      nom: produit,
+      categorie: '',
+      prixUnitaire: l.prix,
+      unite: l.unite || 'unité',
+      description: '',
+      fournisseur: l.source,
+    })
+    alert(`« ${produit} » ajouté au catalogue (${l.prix.toLocaleString('fr-FR')} FCFA / ${l.unite || 'unité'}, source : ${l.source}). Complétez la catégorie si besoin.`)
+  }
+
   // Reload forcé de la page pour purger le cache PWA si l'utilisateur ne voyait pas les changements
   function handleForceReload() {
     if ('serviceWorker' in navigator) {
@@ -187,11 +273,89 @@ export default function Catalogue() {
           <button className="btn secondary" onClick={handleScanDuplicates} disabled={scanningDuplicates} title="Analyse le catalogue par IA pour repérer les doublons probables">
             {scanningDuplicates ? '🤖 Scan en cours…' : '🤖 Scanner les doublons (IA)'}
           </button>
+          <button className="btn secondary" onClick={() => setShowWebSearch((v) => !v)} title="Rechercher un produit et son prix sur internet via Perplexity">
+            🌐 Rechercher sur internet (veille IA)
+          </button>
           <button className="btn" onClick={() => setShowAdd((v) => !v)}>
             {showAdd ? 'Fermer' : '+ Nouveau produit'}
           </button>
         </div>
       </div>
+
+      {showWebSearch && (
+        <div className="panel" style={{ marginBottom: 16 }}>
+          <h3 style={{ margin: '0 0 4px' }}>🌐 Rechercher un produit et son prix sur internet</h3>
+          <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '0 0 12px' }}>
+            Tapez un ou plusieurs produits (séparés par une virgule ou une nouvelle ligne, {MAX_WEB_SEARCH_PRODUCTS} max) —
+            Perplexity cherche le prix et la disponibilité sur le web (Auchan.sn, autres sites, marchés de Dakar).
+            Chaque résultat trouvé peut être ajouté directement au catalogue.
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+            <textarea
+              value={webSearchInput}
+              onChange={(e) => setWebSearchInput(e.target.value)}
+              placeholder={'Ex : Lait concentré sucré\nou un produit par ligne'}
+              rows={2}
+              style={{ flex: '1 1 320px', minWidth: 240, resize: 'vertical' }}
+            />
+            <button className="btn primary" onClick={handleWebSearch} disabled={webSearching}>
+              {webSearching ? 'Recherche en cours…' : '🌐 Rechercher'}
+            </button>
+          </div>
+
+          {webSearchError && (
+            <div style={{ marginTop: 12, fontSize: 12.5, color: 'var(--danger, #c0392b)' }}>{webSearchError}</div>
+          )}
+
+          {webSearchResults && webSearchResults.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 16 }}>
+              {webSearchResults.map((r) => (
+                <div key={r.produit} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 14 }}>
+                  <strong>{r.produit}</strong>
+                  {r.error ? (
+                    <p style={{ fontSize: 12.5, color: 'var(--danger, #c0392b)', margin: '8px 0 0' }}>{r.error}</p>
+                  ) : r.lignes.length === 0 ? (
+                    <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: '8px 0 0' }}>
+                      Aucune information fiable trouvée pour ce produit.
+                    </p>
+                  ) : (
+                    <table className="data-table" style={{ marginTop: 8 }}>
+                      <thead>
+                        <tr>
+                          <th>Source</th>
+                          <th>Prix</th>
+                          <th>Disponibilité</th>
+                          <th></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {r.lignes.map((l, i) => (
+                          <tr key={i}>
+                            <td>{l.source}</td>
+                            <td style={{ fontWeight: 700 }}>
+                              {l.prix !== null ? `${l.prix.toLocaleString('fr-FR')} FCFA${l.unite ? ` / ${l.unite}` : ''}` : '—'}
+                            </td>
+                            <td style={{ fontSize: 12 }}>
+                              {l.disponibilite === 'disponible' ? '✅ Disponible' : l.disponibilite === 'rupture' ? '❌ Rupture' : '— Non précisé'}
+                            </td>
+                            <td>
+                              {l.prix !== null && (
+                                <button className="btn secondary small" onClick={() => handleAddFromWebResult(r.produit, l)}>
+                                  + Ajouter au catalogue
+                                </button>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {duplicateError && (
         <div className="panel" style={{ borderLeft: '4px solid var(--danger, #c0392b)', marginBottom: 16 }}>
@@ -274,16 +438,25 @@ export default function Catalogue() {
 
       {/* Barre de filtres et bascule de vue Grille / Tableau */}
       <div className="filters-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
-        {categories.length > 0 ? (
-          <select value={categorieFilter} onChange={(e) => setCategorieFilter(e.target.value)}>
-            <option value="">Toutes catégories</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        ) : <div />}
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="🔍 Rechercher un produit (nom, catégorie, fournisseur)…"
+            style={{ minWidth: 260 }}
+          />
+          {categories.length > 0 && (
+            <select value={categorieFilter} onChange={(e) => setCategorieFilter(e.target.value)}>
+              <option value="">Toutes catégories</option>
+              {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
 
         <div style={{ display: 'flex', gap: 6 }}>
           <button
