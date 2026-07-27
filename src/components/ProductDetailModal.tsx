@@ -1,6 +1,20 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useCrmStore } from '../store/useCrmStore'
 import type { Product, ProductMedia } from '../types'
+
+interface PriceHistoryEntry {
+  id: string
+  produit: string
+  prix: number
+  unite: string
+  source: string
+  methode: string
+  created_at: string
+}
+
+function normalizeText(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+}
 
 interface ProductDetailModalProps {
   productId: string
@@ -20,6 +34,40 @@ export default function ProductDetailModal({ productId, onClose }: ProductDetail
   const [isGeneratingPitch, setIsGeneratingPitch] = useState(false)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const [priceHistory, setPriceHistory] = useState<PriceHistoryEntry[] | null>(null)
+  const [priceHistoryError, setPriceHistoryError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!product) return
+    let cancelled = false
+    setPriceHistory(null)
+    setPriceHistoryError(null)
+    fetch(`/api/market-prices?produit=${encodeURIComponent(product.nom)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (cancelled) return
+        const allEntries = (data.entries ?? []) as PriceHistoryEntry[]
+        // L'API filtre par sous-chaîne (ex: "sucre" remonte aussi "Alsa sucre vanillé") — on ne
+        // garde ici que les relevés dont le nom correspond EXACTEMENT à ce produit, pour éviter de
+        // mélanger des produits différents dans l'historique/la tendance.
+        const nomNorm = normalizeText(product.nom)
+        const exactMatches = allEntries.filter((e) => normalizeText(e.produit) === nomNorm)
+        // Parmi ces relevés exacts, ne garder que la même unité que la fiche catalogue si possible
+        // (un prix "au kg" et un prix "au sac 50kg" ne sont pas comparables pour une tendance) —
+        // sinon, tout afficher mais sans calcul de tendance trompeur (voir rendu ci-dessous).
+        const uniteNorm = normalizeText(product.unite)
+        const sameUnit = exactMatches.filter((e) => normalizeText(e.unite) === uniteNorm)
+        const finalEntries = sameUnit.length > 0 ? sameUnit : exactMatches
+        setPriceHistory(finalEntries.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()))
+      })
+      .catch(() => {
+        if (!cancelled) setPriceHistoryError("Impossible de charger l'historique de prix.")
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [product?.nom])
 
   // Champs modifiables
   const [nom, setNom] = useState(product?.nom || '')
@@ -390,6 +438,69 @@ ${product.description || 'Produit frais sélectionné pour les restaurants exige
             <div style={{ fontSize: 13, lineHeight: 1.6, color: 'var(--text)' }}>
               {product.description}
             </div>
+          </div>
+        )}
+
+        {/* Historique de prix (relevés du Baromètre Prix pour ce produit) */}
+        {!isEditing && (
+          <div className="panel" style={{ background: '#fcfbf9' }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-dim)', textTransform: 'uppercase', marginBottom: 8 }}>
+              📊 Historique de prix (Baromètre Prix)
+            </div>
+            {priceHistoryError ? (
+              <p style={{ fontSize: 12.5, color: 'var(--danger, #c0392b)', margin: 0 }}>{priceHistoryError}</p>
+            ) : priceHistory === null ? (
+              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0 }}>Chargement…</p>
+            ) : priceHistory.length === 0 ? (
+              <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0 }}>
+                Aucun relevé pour ce produit dans le Baromètre Prix pour l'instant.
+              </p>
+            ) : (
+              <>
+                {(() => {
+                  const uniteNorm = normalizeText(priceHistory[0].unite)
+                  const uniformUnit = priceHistory.every((h) => normalizeText(h.unite) === uniteNorm)
+                  if (priceHistory.length < 2 || !uniformUnit) return null
+                  const plusRecent = priceHistory[0].prix
+                  const plusAncien = priceHistory[priceHistory.length - 1].prix
+                  const variation = plusAncien > 0 ? ((plusRecent - plusAncien) / plusAncien) * 100 : 0
+                  const trend = variation > 1 ? '📈 hausse' : variation < -1 ? '📉 baisse' : '➡️ stable'
+                  return (
+                    <div style={{ fontSize: 12.5, marginBottom: 8, fontWeight: 600 }}>
+                      Tendance sur {priceHistory.length} relevé(s) : {trend} ({variation >= 0 ? '+' : ''}{variation.toFixed(1)}%)
+                    </div>
+                  )
+                })()}
+                {priceHistory.length >= 2 && !priceHistory.every((h) => normalizeText(h.unite) === normalizeText(priceHistory[0].unite)) && (
+                  <p style={{ fontSize: 11, color: 'var(--text-dim)', margin: '0 0 8px' }}>
+                    ⚠️ Unités différentes selon les relevés — pas de tendance calculée pour éviter de comparer des prix non comparables.
+                  </p>
+                )}
+                <table className="data-table" style={{ fontSize: 12 }}>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Prix</th>
+                      <th>Source</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {priceHistory.slice(0, 10).map((h) => (
+                      <tr key={h.id}>
+                        <td style={{ color: 'var(--text-dim)' }}>{new Date(h.created_at).toLocaleDateString('fr-FR')}</td>
+                        <td style={{ fontWeight: 700 }}>{h.prix.toLocaleString('fr-FR')} FCFA / {h.unite}</td>
+                        <td>{h.source}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                {priceHistory.length > 10 && (
+                  <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 6, marginBottom: 0 }}>
+                    + {priceHistory.length - 10} autre(s) relevé(s) — voir le Baromètre Prix pour l'historique complet.
+                  </p>
+                )}
+              </>
+            )}
           </div>
         )}
 

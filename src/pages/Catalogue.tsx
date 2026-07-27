@@ -1,7 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useCrmStore } from '../store/useCrmStore'
 import type { Product } from '../types'
 import ProductDetailModal from '../components/ProductDetailModal'
+import { exportProductsCsv } from '../utils/csv'
+import { exportProductsXlsx } from '../utils/excel'
+import { exportProductsPdf } from '../utils/pdf'
+import { parseProductsFile } from '../utils/importProducts'
 
 const RUPTURE_LOOKBACK_DAYS = 21
 const MAX_WEB_SEARCH_PRODUCTS = 5
@@ -72,6 +76,7 @@ export default function Catalogue() {
   const [editDraft, setEditDraft] = useState(emptyDraft())
   const [categorieFilter, setCategorieFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [sortOrder, setSortOrder] = useState<'nom-asc' | 'nom-desc' | 'prix-asc' | 'prix-desc' | 'recent'>('nom-asc')
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
 
@@ -109,6 +114,14 @@ export default function Catalogue() {
 
   const list = useMemo(() => Object.values(products).sort((a, b) => a.nom.localeCompare(b.nom)), [products])
 
+  // Product n'a pas de date de création — l'ordre d'insertion des clés de l'objet (préservé par JS
+  // pour des clés non-numériques) sert de proxy fiable pour "plus récemment ajoutés".
+  const insertionIndex = useMemo(() => {
+    const m = new Map<string, number>()
+    Object.keys(products).forEach((id, i) => m.set(id, i))
+    return m
+  }, [products])
+
   const categories = useMemo(() => {
     const set = new Set(list.map((p) => p.categorie).filter(Boolean))
     return Array.from(set).sort()
@@ -124,8 +137,13 @@ export default function Catalogue() {
         return words.every((w) => haystack.includes(w))
       })
     }
+    result = [...result]
+    if (sortOrder === 'nom-desc') result.reverse()
+    else if (sortOrder === 'prix-asc') result.sort((a, b) => a.prixUnitaire - b.prixUnitaire)
+    else if (sortOrder === 'prix-desc') result.sort((a, b) => b.prixUnitaire - a.prixUnitaire)
+    else if (sortOrder === 'recent') result.sort((a, b) => (insertionIndex.get(b.id) ?? 0) - (insertionIndex.get(a.id) ?? 0))
     return result
-  }, [list, categorieFilter, searchQuery])
+  }, [list, categorieFilter, searchQuery, sortOrder, insertionIndex])
 
   function handleAdd() {
     if (!draft.nom.trim() || draft.prixUnitaire <= 0) return
@@ -266,6 +284,52 @@ export default function Catalogue() {
     alert(`« ${nom} » ajouté au catalogue (${l.prix.toLocaleString('fr-FR')} FCFA / ${l.unite || 'unité'}, source : ${l.source}). Complétez la catégorie si besoin.`)
   }
 
+  const importInputRef = useRef<HTMLInputElement>(null)
+
+  function handleImportClick() {
+    importInputRef.current?.click()
+  }
+
+  function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const isCsv = file.name.toLowerCase().endsWith('.csv')
+    const reader = new FileReader()
+    reader.onload = () => {
+      try {
+        const result = parseProductsFile(reader.result as ArrayBuffer | string)
+        if (result.rows.length === 0) {
+          alert("Aucune ligne exploitable trouvée. Le fichier doit avoir des colonnes 'Nom' et 'Prix' (les autres colonnes sont facultatives).")
+          return
+        }
+        if (
+          !confirm(
+            `Importer ${result.rows.length} produit(s) ? ${result.skipped > 0 ? `(${result.skipped} ligne(s) ignorée(s) car incomplètes)` : ''}`
+          )
+        )
+          return
+        for (const row of result.rows) {
+          addProduct({
+            nom: row.nom,
+            categorie: row.categorie || 'Autre',
+            prixUnitaire: row.prixUnitaire,
+            unite: row.unite,
+            description: row.description,
+            origine: row.origine,
+            fournisseur: row.fournisseur,
+          })
+        }
+        alert(`${result.rows.length} produit(s) importé(s) avec succès.`)
+      } catch (err) {
+        alert('Impossible de lire ce fichier. Formats acceptés : .csv, .xlsx.')
+      } finally {
+        e.target.value = ''
+      }
+    }
+    if (isCsv) reader.readAsText(file, 'utf-8')
+    else reader.readAsArrayBuffer(file)
+  }
+
   // Reload forcé de la page pour purger le cache PWA si l'utilisateur ne voyait pas les changements
   function handleForceReload() {
     if ('serviceWorker' in navigator) {
@@ -298,6 +362,19 @@ export default function Catalogue() {
           </button>
           <button className="btn secondary" onClick={() => setShowWebSearch((v) => !v)} title="Rechercher un produit et son prix sur internet via Perplexity">
             🌐 Rechercher sur internet (veille IA)
+          </button>
+          <button className="btn secondary" onClick={handleImportClick} title="Importer des produits depuis un fichier .csv ou .xlsx">
+            📥 Importer
+          </button>
+          <input ref={importInputRef} type="file" accept=".csv,.xlsx,.xls" style={{ display: 'none' }} onChange={handleImportFile} />
+          <button className="btn secondary" onClick={() => exportProductsCsv(filtered)} title="Exporter les produits affichés en CSV">
+            CSV
+          </button>
+          <button className="btn secondary" onClick={() => exportProductsXlsx(filtered)} title="Exporter les produits affichés en Excel">
+            Excel
+          </button>
+          <button className="btn secondary" onClick={() => exportProductsPdf(filtered)} title="Exporter les produits affichés en PDF">
+            PDF
           </button>
           <button className="btn" onClick={() => setShowAdd((v) => !v)}>
             {showAdd ? 'Fermer' : '+ Nouveau produit'}
@@ -490,6 +567,13 @@ export default function Catalogue() {
               ))}
             </select>
           )}
+          <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as typeof sortOrder)}>
+            <option value="nom-asc">Trier : Nom (A→Z)</option>
+            <option value="nom-desc">Trier : Nom (Z→A)</option>
+            <option value="prix-asc">Trier : Prix croissant</option>
+            <option value="prix-desc">Trier : Prix décroissant</option>
+            <option value="recent">Trier : Plus récemment ajoutés</option>
+          </select>
         </div>
 
         <div style={{ display: 'flex', gap: 6 }}>

@@ -2,6 +2,7 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { STATUT_LABELS, SANTE_LABELS, INTERACTION_LABELS } from '../types'
 import type { JoinedProspect } from './joined'
+import type { Product } from '../types'
 
 const PRIMARY: [number, number, number] = [122, 31, 31] // #7a1f1f
 const ROW_ALT: [number, number, number] = [247, 241, 232] // #f7f1e8
@@ -81,6 +82,42 @@ export function exportProspectsPdf(joined: JoinedProspect[], title = 'Répertoir
 
   addFooter(doc)
   download(doc, `restau-crm-prospects-${new Date().toISOString().slice(0, 10)}.pdf`)
+}
+
+export function exportProductsPdf(products: Product[]) {
+  const doc = newDoc('Catalogue produits', `${products.length} produits`)
+
+  const head = [['Nom', 'Catégorie', 'Prix (FCFA)', 'Unité', 'Origine', 'Fournisseur']]
+  const body = products.map((p) => [
+    p.nom,
+    p.categorie,
+    p.prixUnitaire.toLocaleString('fr-FR'),
+    p.unite,
+    p.origine || '—',
+    p.fournisseur || '—',
+  ])
+
+  autoTable(doc, {
+    head,
+    body,
+    startY: 58,
+    margin: { left: 24, right: 24 },
+    styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak' },
+    headStyles: { fillColor: PRIMARY, textColor: 255, fontStyle: 'bold' },
+    alternateRowStyles: { fillColor: ROW_ALT },
+    columnStyles: {
+      0: { cellWidth: 190 },
+      1: { cellWidth: 100 },
+      2: { cellWidth: 80 },
+      3: { cellWidth: 100 },
+      4: { cellWidth: 120 },
+      5: { cellWidth: 120 },
+    },
+    didDrawPage: () => addFooter(doc),
+  })
+
+  addFooter(doc)
+  download(doc, `restau-crm-catalogue-${new Date().toISOString().slice(0, 10)}.pdf`)
 }
 
 export function exportClientsPdf(clients: JoinedProspect[]) {

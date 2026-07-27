@@ -1,6 +1,7 @@
 import * as XLSX from 'xlsx'
 import { STATUT_LABELS, SANTE_LABELS } from '../types'
 import type { JoinedProspect } from './joined'
+import type { Product } from '../types'
 
 function sheetName(name: string): string {
   // Excel sheet names: max 31 chars, no : \ / ? * [ ]
@@ -86,6 +87,22 @@ export function exportClientsXlsx(clients: JoinedProspect[]) {
     j.crm.deal.dateSignature ?? '',
   ])
   buildAndDownload(header, rows, 'Clients', `restau-crm-clients-${new Date().toISOString().slice(0, 10)}.xlsx`)
+}
+
+export function exportProductsXlsx(products: Product[]) {
+  const header = ['Nom', 'Catégorie', 'Prix unitaire (FCFA)', 'Unité', 'Description', 'Origine', 'Stock disponible', 'Minimum de commande', 'Fournisseur']
+  const rows: (string | number)[][] = products.map((p) => [
+    p.nom,
+    p.categorie,
+    p.prixUnitaire,
+    p.unite,
+    p.description || '',
+    p.origine || '',
+    p.stockDispo ?? '',
+    p.minimumCommande ?? '',
+    p.fournisseur || '',
+  ])
+  buildAndDownload(header, rows, 'Catalogue', `restau-crm-catalogue-${new Date().toISOString().slice(0, 10)}.xlsx`)
 }
 
 export function exportAgentXlsx(agent: string, joined: JoinedProspect[]) {
