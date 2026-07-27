@@ -435,7 +435,7 @@ export default function Catalogue() {
                           return (
                           <tr key={i}>
                             <td>
-                              <a href={sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent, #c0793a)', textDecoration: 'underline' }} title="Ouvrir le site de l'entreprise (ou une recherche Google si le lien direct est incertain)">
+                              <a href={sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#1e3a8a', fontWeight: 600, textDecoration: 'underline' }} title="Ouvrir le site de l'entreprise (ou une recherche Google si le lien direct est incertain)">
                                 {l.source} 🔗
                               </a>
                             </td>
