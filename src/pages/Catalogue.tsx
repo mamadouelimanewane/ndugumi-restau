@@ -22,6 +22,7 @@ interface WebSearchLine {
 interface WebSearchResult {
   produit: string
   lignes: WebSearchLine[]
+  citations: string[]
   error: string | null
 }
 
@@ -33,6 +34,26 @@ function normalize(s: string): string {
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
     .trim()
+}
+
+// Les citations renvoyées par Perplexity sont au niveau du produit (pas une par ligne) — on
+// retrouve la plus probable pour une source donnée en comparant son nom de domaine au libellé
+// de la source. Si aucune ne correspond, on retombe sur une recherche Google (toujours cliquable,
+// "au cas où" la citation directe manque).
+function findSourceLink(source: string, citations: string[], fallbackQuery: string): string {
+  const normalizedSource = normalize(source)
+  for (const url of citations) {
+    try {
+      const host = new URL(url).hostname.replace(/^www\./, '')
+      const domainWord = host.split('.')[0]
+      if (domainWord.length >= 3 && normalizedSource.includes(normalize(domainWord))) {
+        return url
+      }
+    } catch {
+      // URL invalide, ignorée
+    }
+  }
+  return `https://www.google.com/search?q=${encodeURIComponent(fallbackQuery)}`
 }
 
 function emptyDraft(): Omit<Product, 'id'> {
@@ -332,10 +353,16 @@ export default function Catalogue() {
                         </tr>
                       </thead>
                       <tbody>
-                        {r.lignes.map((l, i) => (
+                        {r.lignes.map((l, i) => {
+                          const sourceUrl = findSourceLink(l.source, r.citations, `${l.source} ${l.libelle || r.produit}`)
+                          return (
                           <tr key={i}>
-                            <td>{l.source}</td>
-                            <td style={{ fontSize: 12.5, color: l.libelle ? 'var(--text)' : 'var(--text-dim)' }}>
+                            <td>
+                              <a href={sourceUrl} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent, #c0793a)', textDecoration: 'underline' }} title="Ouvrir le site de l'entreprise (ou une recherche Google si le lien direct est incertain)">
+                                {l.source} 🔗
+                              </a>
+                            </td>
+                            <td style={{ fontSize: 12.5, fontWeight: l.libelle ? 700 : 400, color: l.libelle ? 'var(--primary, #7a1f1f)' : 'var(--text-dim)' }}>
                               {l.libelle || '— Non précisé'}
                             </td>
                             <td style={{ fontWeight: 700 }}>
@@ -352,7 +379,8 @@ export default function Catalogue() {
                               )}
                             </td>
                           </tr>
-                        ))}
+                          )
+                        })}
                       </tbody>
                     </table>
                   )}
