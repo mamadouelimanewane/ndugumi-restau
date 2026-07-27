@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useCrmStore } from '../store/useCrmStore'
 import { joinProspects } from '../utils/joined'
 import { waLinkWithText } from '../utils/phone'
+import { brandedHeaderMm } from '../utils/pdf'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
@@ -141,13 +142,8 @@ Merci pour votre confiance ! 🙏
 
   function downloadPdfInvoice(c: CreditEntry) {
     const doc = new jsPDF()
-    doc.setFillColor(122, 31, 31)
-    doc.rect(0, 0, 210, 24, 'F')
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(16); doc.setFont('helvetica', 'bold')
-    doc.text('NDUGUMi — FACTURE CLIENT', 14, 15)
+    brandedHeaderMm(doc, 'NDUGUMi — FACTURE CLIENT')
 
-    doc.setTextColor(40, 40, 40)
     doc.setFontSize(11); doc.setFont('helvetica', 'bold')
     doc.text(`Facture N° : ${c.reference}`, 14, 35)
     doc.setFont('helvetica', 'normal')

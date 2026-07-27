@@ -422,6 +422,54 @@ async function handleCompare(req: any, res: any) {
   res.status(200).json({ results })
 }
 
+async function handleFindSuppliers(req: any, res: any) {
+  if (!(await checkRateLimit(req, res, 'market-prices-find-suppliers', 100))) return
+
+  const body = req.body as { produit?: string }
+  const produit = (body.produit || '').trim()
+  if (!produit) {
+    res.status(400).json({ error: 'Indiquez un produit ou une catégorie à approvisionner.' })
+    return
+  }
+
+  const question = `Je cherche des fournisseurs/producteurs RÉELS pour approvisionner "${produit}" en gros pour un
+grossiste/distributeur de produits alimentaires à Dakar, Sénégal. Cherche en priorité des coopératives,
+groupements de producteurs, ou importateurs basés au Sénégal (Vallée du Fleuve, Niayes, ports d'importation,
+zones industrielles de Dakar/Rufisque). Pour chaque fournisseur trouvé, donne son nom, sa région/localisation,
+les produits qu'il fournit, et un moyen de contact (téléphone, site web, page Facebook) si trouvé. Ne donne que
+des fournisseurs réels que tu trouves effectivement, n'invente aucun nom ni contact.`
+  const { content, citations } = await callPerplexity(question)
+
+  const extractPrompt = `Voici le résultat d'une recherche web de fournisseurs pour "${produit}" à Dakar/Sénégal :
+"""
+${content.slice(0, 2500)}
+"""
+Réponds UNIQUEMENT en JSON avec la clé "fournisseurs", un tableau d'objets — un par fournisseur RÉEL
+mentionné dans le texte ci-dessus :
+{"nom": string, "region": string (localisation si mentionnée, sinon chaîne vide), "produitsFournis": string
+(description courte de ce qu'il fournit), "telephone": string (numéro si mentionné, sinon chaîne vide)}
+N'invente aucun fournisseur ni aucun contact qui ne soit pas explicitement mentionné dans le texte ci-dessus.
+Si aucun fournisseur clair n'est trouvé, renvoie "fournisseurs": [].`
+  const raw = await callDeepSeek([{ role: 'user', content: extractPrompt }], 1200)
+  let parsed: { fournisseurs?: { nom?: string; region?: string; produitsFournis?: string; telephone?: string }[] }
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error('Réponse IA incomplète ou mal formée — réessayez.')
+  }
+
+  const fournisseurs = (parsed.fournisseurs ?? [])
+    .filter((f) => f.nom)
+    .map((f) => ({
+      nom: f.nom!,
+      region: f.region || '',
+      produitsFournis: f.produitsFournis || produit,
+      telephone: f.telephone || '',
+    }))
+
+  res.status(200).json({ fournisseurs, citations })
+}
+
 async function handleOcr(req: any, res: any) {
   if (!(await checkRateLimit(req, res, 'market-prices-ocr'))) return
 
@@ -510,6 +558,7 @@ export default async function handler(req: any, res: any) {
     if (req.method === 'POST' && action === 'ocr') return await handleOcr(req, res)
     if (req.method === 'POST' && action === 'analyze') return await handleAnalyze(req, res)
     if (req.method === 'POST' && action === 'compare') return await handleCompare(req, res)
+    if (req.method === 'POST' && action === 'find-suppliers') return await handleFindSuppliers(req, res)
     if (req.method === 'GET' && action === 'webwatch') return await handleWebWatch(req, res)
 
     const supabase = getAdminClient()

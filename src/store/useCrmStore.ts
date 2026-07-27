@@ -20,6 +20,8 @@ import {
   type StatutHistoryEntry,
   type Product,
   type ProductMap,
+  type Supplier,
+  type SupplierMap,
   type MessageTemplate,
   type TemplateMap,
   type Campaign,
@@ -66,6 +68,19 @@ const DEFAULT_PRODUCTS: Product[] = [
 function makeDefaultProducts(): ProductMap {
   const m: ProductMap = {}
   for (const p of DEFAULT_PRODUCTS) m[p.id] = p
+  return m
+}
+
+const DEFAULT_SUPPLIERS: Supplier[] = [
+  { id: 'fourn-1', nom: 'Coopérative Rizicole de Richard-Toll', region: 'Vallée du Fleuve Sénégal', produitsFournis: 'Riz brisé parfumé (Gambia & Sahel 108)', telephone: '+221 77 111 22 33', qualiteNote: 5, prixNegocie: '12 500 FCFA / sac 25kg', statut: 'agreé' },
+  { id: 'fourn-2', nom: 'Groupement Maraîcher des Niayes (Notto Gouye Diama)', region: 'Niayes', produitsFournis: 'Oignons frais local, Pommes de terre & Carottes', telephone: '+221 77 222 33 44', qualiteNote: 4.8, prixNegocie: '7 000 FCFA / sac 25kg', statut: 'agreé' },
+  { id: 'fourn-3', nom: 'Grands Importateurs de Dakar (Huileries & Épicerie)', region: 'Port Autonome de Dakar', produitsFournis: 'Huile végétale raffinée 20L & Concentré de tomate', telephone: '+221 77 333 44 55', qualiteNote: 4.5, prixNegocie: '15 200 FCFA / bidon 20L', statut: 'agreé' },
+  { id: 'fourn-4', nom: 'Complexe Avicole de Mbour', region: 'Petite Côte / Mbour', produitsFournis: 'Poulet entier congelé & Œufs frais', telephone: '+221 77 444 55 66', qualiteNote: 4.6, prixNegocie: '26 000 FCFA / carton 10 poulets', statut: 'en_negociation' },
+]
+
+function makeDefaultSuppliers(): SupplierMap {
+  const m: SupplierMap = {}
+  for (const s of DEFAULT_SUPPLIERS) m[s.id] = s
   return m
 }
 
@@ -183,6 +198,7 @@ export interface CrmBackup {
   merchantPortalUrl: string
   quotas: Record<string, number>
   products: ProductMap
+  suppliers: SupplierMap
   templates: TemplateMap
   campaigns: CampaignMap
   campaignSends: CampaignSendMap
@@ -203,6 +219,7 @@ interface CrmStore {
   merchantPortalUrl: string
   quotas: Record<string, number>
   products: ProductMap
+  suppliers: SupplierMap
   templates: TemplateMap
   campaigns: CampaignMap
   campaignSends: CampaignSendMap
@@ -307,6 +324,11 @@ interface CrmStore {
   updateProduct: (id: string, fields: Partial<Omit<Product, 'id'>>) => void
   removeProduct: (id: string) => void
 
+  // Fournisseurs / Achats
+  addSupplier: (data: Omit<Supplier, 'id'>) => void
+  updateSupplier: (id: string, fields: Partial<Omit<Supplier, 'id'>>) => void
+  removeSupplier: (id: string) => void
+
   // Templates de communication (WhatsApp / Email)
   addTemplate: (data: Omit<MessageTemplate, 'id' | 'createdAt'>) => void
   updateTemplate: (id: string, fields: Partial<Omit<MessageTemplate, 'id'>>) => void
@@ -335,6 +357,7 @@ export const useCrmStore = create<CrmStore>()(
       merchantPortalUrl: DEFAULT_MERCHANT_PORTAL_URL,
       quotas: {},
       products: makeDefaultProducts(),
+      suppliers: makeDefaultSuppliers(),
       templates: makeDefaultTemplates(),
       campaigns: {},
       campaignSends: {},
@@ -977,6 +1000,28 @@ export const useCrmStore = create<CrmStore>()(
         })
       },
 
+      addSupplier: (data) => {
+        const id = crypto.randomUUID()
+        const supplier: Supplier = { id, ...data }
+        set((s) => ({ suppliers: { ...s.suppliers, [id]: supplier } }))
+      },
+
+      updateSupplier: (id, fields) => {
+        set((s) => {
+          const existing = s.suppliers[id]
+          if (!existing) return s
+          return { suppliers: { ...s.suppliers, [id]: { ...existing, ...fields } } }
+        })
+      },
+
+      removeSupplier: (id) => {
+        set((s) => {
+          const suppliers = { ...s.suppliers }
+          delete suppliers[id]
+          return { suppliers }
+        })
+      },
+
       addTemplate: (data) => {
         const id = crypto.randomUUID()
         const template: MessageTemplate = { id, createdAt: todayISO(), ...data }
@@ -1041,6 +1086,7 @@ export const useCrmStore = create<CrmStore>()(
           merchantPortalUrl: s.merchantPortalUrl,
           quotas: s.quotas,
           products: s.products,
+          suppliers: s.suppliers,
           templates: s.templates,
           campaigns: s.campaigns,
           campaignSends: s.campaignSends,
@@ -1063,6 +1109,7 @@ export const useCrmStore = create<CrmStore>()(
           merchantPortalUrl: data.merchantPortalUrl ?? DEFAULT_MERCHANT_PORTAL_URL,
           quotas: data.quotas ?? {},
           products: data.products ?? makeDefaultProducts(),
+          suppliers: data.suppliers ?? makeDefaultSuppliers(),
           templates: data.templates ?? makeDefaultTemplates(),
           campaigns: data.campaigns ?? {},
           campaignSends: data.campaignSends ?? {},
@@ -1084,6 +1131,7 @@ export const useCrmStore = create<CrmStore>()(
           merchantPortalUrl: DEFAULT_MERCHANT_PORTAL_URL,
           quotas: {},
           products: makeDefaultProducts(),
+          suppliers: makeDefaultSuppliers(),
           templates: makeDefaultTemplates(),
           campaigns: {},
           campaignSends: {},
@@ -1098,7 +1146,7 @@ export const useCrmStore = create<CrmStore>()(
     {
       name: 'restau-crm-storage',
       storage: createJSONStorage(() => supabaseStorage),
-      version: 8,
+      version: 9,
       migrate: (persisted: any) => {
         if (!persisted) return persisted
         const prospects: ProspectMap = persisted.prospects ?? {}
@@ -1126,6 +1174,7 @@ export const useCrmStore = create<CrmStore>()(
           merchantPortalUrl: persisted.merchantPortalUrl ?? DEFAULT_MERCHANT_PORTAL_URL,
           quotas: persisted.quotas ?? {},
           products: persisted.products ?? makeDefaultProducts(),
+          suppliers: persisted.suppliers ?? makeDefaultSuppliers(),
           templates: persisted.templates ?? makeDefaultTemplates(),
           campaigns: persisted.campaigns ?? {},
           campaignSends: persisted.campaignSends ?? {},

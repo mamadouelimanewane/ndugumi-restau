@@ -32,7 +32,15 @@ async function postJson<T>(path: string, body: any): Promise<T> {
     if (path === '/api/ai-score') {
       return { score: 75, raison: "Client très actif mais quelques retards", prochaineAction: "Appeler pour proposer une promo" } as any
     }
-    
+    if (path === '/api/ai-summary?action=briefing') {
+      return {
+        profil: `[MOCK IA] ${body.etablissement} (${body.quartier}), statut « ${body.statut} ».`,
+        objections: ['Objection simulée (mode dev local, API non déployée).'],
+        argumentsCles: ['Argument simulé (mode dev local, API non déployée).'],
+        offreConseillee: 'Offre simulée (mode dev local).',
+      } as any
+    }
+
     throw err
   }
 }
@@ -52,6 +60,25 @@ export interface AiSummaryInput {
 
 export function fetchAiSummary(input: AiSummaryInput): Promise<{ summary: string }> {
   return postJson('/api/ai-summary', input)
+}
+
+export interface AiBriefingInput {
+  etablissement: string
+  quartier: string
+  statut: string
+  agent: string
+  notes: { date: string; texte: string; type: string }[]
+}
+
+export interface AiBriefingResult {
+  profil: string
+  objections: string[]
+  argumentsCles: string[]
+  offreConseillee: string
+}
+
+export function fetchAiBriefing(input: AiBriefingInput): Promise<AiBriefingResult> {
+  return postJson('/api/ai-summary?action=briefing', input)
 }
 
 export interface AiMessageInput {

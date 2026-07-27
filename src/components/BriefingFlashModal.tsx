@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchAiSummary } from '../utils/ai'
+import { fetchAiBriefing, type AiBriefingResult } from '../utils/ai'
 
 interface BriefingFlashModalProps {
   etablissement: string
@@ -11,32 +11,28 @@ interface BriefingFlashModalProps {
 }
 
 export default function BriefingFlashModal({ etablissement, quartier, statut, agent, notes, onClose }: BriefingFlashModalProps) {
-  const [brief, setBrief] = useState<{
-    profil: string
-    objections: string[]
-    argumentsCles: string[]
-    offreConseillee: string
-  } | null>(null)
+  const [brief, setBrief] = useState<AiBriefingResult | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Génération du brief par l'IA
-    setTimeout(() => {
-      setBrief({
-        profil: `${etablissement} est un prospect situé à ${quartier} au statut « ${statut} ».`,
-        objections: [
-          'Craint les retards de livraison pendant les heures de pointe de midi.',
-          'Souhaite tester une petite quantité avant de commander un gros volume.',
-        ],
-        argumentsCles: [
-          '🚚 Garantie de livraison express avant 11h du matin sur le secteur ' + quartier + '.',
-          '🛒 Possibilité de passer une commande d\'essai (1 sac de riz 25kg + 1 bidon d\'huile) sans engagement.',
-          '📲 Application mobile NDUGUMi simplifiée avec suivi du livreur en direct.',
-        ],
-        offreConseillee: 'Pack d\'essai NDUGUMi (1x Riz brisé 25kg + 1x Huile 20L avec Livraison offerte).',
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+    fetchAiBriefing({ etablissement, quartier, statut, agent, notes })
+      .then((res) => {
+        if (!cancelled) setBrief(res)
       })
-      setLoading(false)
-    }, 1500)
+      .catch((e) => {
+        if (!cancelled) setError(e?.message || 'Erreur lors de la génération du briefing.')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [etablissement, quartier, statut])
 
   return (
@@ -63,6 +59,12 @@ export default function BriefingFlashModal({ etablissement, quartier, statut, ag
           <div style={{ textAlign: 'center', padding: 30 }}>
             <div style={{ fontSize: 32 }}>✨</div>
             <div style={{ fontSize: 14, fontWeight: 600, marginTop: 8 }}>Génération du Briefing Commercial IA pour {etablissement}...</div>
+          </div>
+        )}
+
+        {error && (
+          <div style={{ background: '#fef2f2', padding: 12, borderRadius: 8, border: '1px solid #fca5a5', color: '#b91c1c', fontSize: 13 }}>
+            {error}
           </div>
         )}
 

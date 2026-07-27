@@ -1,24 +1,15 @@
 import { useState } from 'react'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import { brandedHeaderMm } from '../utils/pdf'
 
 /* ─────────────────────────────────────────────
    Helpers PDF
 ───────────────────────────────────────────── */
 function pdfHeader(doc: jsPDF, title: string, subtitle: string) {
-  // Bande de couleur en-tête
-  doc.setFillColor(122, 31, 31)
-  doc.rect(0, 0, 210, 22, 'F')
-  doc.setTextColor(255, 255, 255)
-  doc.setFontSize(14)
-  doc.setFont('helvetica', 'bold')
-  doc.text('NDUGUMi — Équipe commerciale', 14, 10)
-  doc.setFontSize(10)
-  doc.setFont('helvetica', 'normal')
-  doc.text(title, 14, 17)
+  brandedHeaderMm(doc, title, { height: 22, brandLine: 'NDUGUMi — Équipe commerciale' })
 
   // Sous-titre
-  doc.setTextColor(40, 40, 40)
   doc.setFontSize(16)
   doc.setFont('helvetica', 'bold')
   doc.text(subtitle, 14, 32)

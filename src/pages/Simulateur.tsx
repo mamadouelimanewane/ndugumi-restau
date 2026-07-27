@@ -1,15 +1,62 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useCrmStore } from '../store/useCrmStore'
 import { waLinkWithText } from '../utils/phone'
+import { brandedHeaderMm } from '../utils/pdf'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
+const TAUX_DEFAUT = 0.12 // repli si pas assez de produits communs entre Catalogue et Baromètre Prix
+const MIN_PRODUITS_FIABLE = 3
+
+function normalizeText(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
+}
+
 export default function Simulateur() {
+  const products = useCrmStore((s) => s.products)
   const [budgetMensuel, setBudgetMensuel] = useState<number>(1500000) // FCFA
   const [frequenceMarche, setFrequenceMarche] = useState<number>(3) // 3 fois par semaine
 
+  const [marketEntries, setMarketEntries] = useState<{ produit: string; prix: number; unite: string; created_at: string }[] | null>(null)
+
+  useEffect(() => {
+    fetch('/api/market-prices')
+      .then((res) => res.json())
+      .then((data) => setMarketEntries(data.entries ?? []))
+      .catch(() => setMarketEntries([]))
+  }, [])
+
+  // Taux d'économie réel : compare le prix catalogue NDUGUMi de chaque produit au prix marché le
+  // plus récent trouvé pour ce même produit (même nom normalisé, même unité) dans le Baromètre
+  // Prix — plutôt qu'un taux forfaitaire supposé. Repli sur TAUX_DEFAUT si trop peu de produits
+  // communs pour être fiable (< MIN_PRODUITS_FIABLE).
+  const { tauxEconomie, produitsUtilises, estimationReelle } = useMemo(() => {
+    if (!marketEntries) return { tauxEconomie: TAUX_DEFAUT, produitsUtilises: [] as { nom: string; ecart: number }[], estimationReelle: false }
+
+    const catalogueList = Object.values(products)
+    const matches: { nom: string; ecart: number }[] = []
+
+    for (const p of catalogueList) {
+      const nomNorm = normalizeText(p.nom)
+      const uniteNorm = normalizeText(p.unite)
+      const candidats = marketEntries.filter((e) => normalizeText(e.produit) === nomNorm && normalizeText(e.unite) === uniteNorm)
+      if (candidats.length === 0) continue
+      const plusRecent = candidats.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0]
+      if (plusRecent.prix <= 0) continue
+      const ecart = (plusRecent.prix - p.prixUnitaire) / plusRecent.prix
+      matches.push({ nom: p.nom, ecart })
+    }
+
+    if (matches.length < MIN_PRODUITS_FIABLE) {
+      return { tauxEconomie: TAUX_DEFAUT, produitsUtilises: matches, estimationReelle: false }
+    }
+    const moyenne = matches.reduce((sum, m) => sum + m.ecart, 0) / matches.length
+    return { tauxEconomie: moyenne, produitsUtilises: matches, estimationReelle: true }
+  }, [marketEntries, products])
+
   // Calculs dynamiques
-  const economieProduitsAnnuelle = Math.round(budgetMensuel * 0.12 * 12) // 12% d'économie
-  const economieProduitsMensuelle = Math.round(budgetMensuel * 0.12)
+  const economieProduitsAnnuelle = Math.round(budgetMensuel * tauxEconomie * 12)
+  const economieProduitsMensuelle = Math.round(budgetMensuel * tauxEconomie)
 
   const heuresGagneesMensuelles = frequenceMarche * 4 * 4 // 4h par trajet x 4 semaines
   const heuresGagneesAnnuelles = heuresGagneesMensuelles * 12
@@ -26,7 +73,7 @@ export default function Simulateur() {
 📊 *Votre budget marché actuel* : ${budgetMensuel.toLocaleString('fr-FR')} FCFA / mois
 
 💰 *Vos Gains Estimés avec NDUGUMi* :
-• *Économie directe sur les produits (12%)* : +${economieProduitsMensuelle.toLocaleString('fr-FR')} FCFA / mois
+• *Économie directe sur les produits (${Math.round(tauxEconomie * 100)}%)* : +${economieProduitsMensuelle.toLocaleString('fr-FR')} FCFA / mois
 • *Économie de transport évitée* : +${coutTransportMensuel.toLocaleString('fr-FR')} FCFA / mois
 • ⏱️ *Temps de marché gagné* : *${heuresGagneesMensuelles} heures* de liberté par mois !
 
@@ -42,13 +89,8 @@ export default function Simulateur() {
 
   function downloadPdfReport() {
     const doc = new jsPDF()
-    doc.setFillColor(122, 31, 31)
-    doc.rect(0, 0, 210, 24, 'F')
-    doc.setTextColor(255, 255, 255)
-    doc.setFontSize(16); doc.setFont('helvetica', 'bold')
-    doc.text('NDUGUMi — BILAN D\'ÉCONOMIES & ROI CLIENT', 14, 15)
+    brandedHeaderMm(doc, 'NDUGUMi — BILAN D\'ÉCONOMIES & ROI CLIENT')
 
-    doc.setTextColor(40, 40, 40)
     doc.setFontSize(12); doc.setFont('helvetica', 'bold')
     doc.text(`Budget marché actuel : ${budgetMensuel.toLocaleString('fr-FR')} FCFA / mois`, 14, 35)
 
@@ -86,8 +128,13 @@ export default function Simulateur() {
 
       {/* Curseur Interactif */}
       <div className="panel" style={{ marginBottom: 20 }}>
-        <h3 style={{ margin: '0 0 16px' }}>⚙️ Ajuster le Budget du Restaurant</h3>
-        
+        <h3 style={{ margin: '0 0 4px' }}>⚙️ Ajuster le Budget du Restaurant</h3>
+        <p style={{ fontSize: 12, color: 'var(--text-dim)', margin: '0 0 16px' }}>
+          {estimationReelle
+            ? `Taux d'économie de ${Math.round(tauxEconomie * 100)}% calculé à partir de ${produitsUtilises.length} produit(s) présents à la fois dans le Catalogue et le Baromètre Prix (écart réel constaté entre le prix NDUGUMi et le prix marché le plus récent).`
+            : `Taux d'économie par défaut de ${Math.round(TAUX_DEFAUT * 100)}% (estimation) — pas assez de produits communs entre le Catalogue et le Baromètre Prix pour un taux calculé (${produitsUtilises.length}/${MIN_PRODUITS_FIABLE} minimum).`}
+        </p>
+
         <div className="field-row">
           <label>Budget marché mensuel : <strong style={{ fontSize: 18, color: '#7a1f1f' }}>{budgetMensuel.toLocaleString('fr-FR')} FCFA / mois</strong></label>
           <input

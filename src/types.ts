@@ -257,6 +257,21 @@ export interface Product {
 
 export type ProductMap = Record<string, Product>
 
+export type SupplierStatut = 'agreé' | 'en_negociation' | 'inactif'
+
+export interface Supplier {
+  id: string
+  nom: string
+  region: string
+  produitsFournis: string
+  telephone: string
+  qualiteNote: number // 1-5
+  prixNegocie: string
+  statut: SupplierStatut
+}
+
+export type SupplierMap = Record<string, Supplier>
+
 export type Canal = 'whatsapp' | 'email'
 
 export const CANAL_LABELS: Record<Canal, string> = {

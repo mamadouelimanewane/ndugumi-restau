@@ -5,6 +5,7 @@ import { joinProspects, isLate, isToday } from '../utils/joined'
 import { googleCalendarLink, toISODate } from '../utils/calendar'
 import { waLinkWithText, effectiveWhatsappNumber } from '../utils/phone'
 import { STATUT_COLORS, STATUT_LABELS, type Statut } from '../types'
+import { brandedHeaderMm } from '../utils/pdf'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
@@ -90,13 +91,8 @@ export const Tournee: React.FC = () => {
     const today = new Date().toLocaleDateString('fr-FR')
     
     // Header
-    doc.setFillColor('#7a1f1f')
-    doc.rect(0, 0, doc.internal.pageSize.width, 30, 'F')
-    doc.setTextColor('#ffffff')
-    doc.setFontSize(16)
-    doc.text('NDUGUMi - Planning de Tournée', 14, 20)
-    
-    doc.setTextColor('#333333')
+    brandedHeaderMm(doc, 'NDUGUMi - Planning de Tournée', { height: 30 })
+
     doc.setFontSize(12)
     doc.text(`Agent : ${activeAgent || 'Inconnu'}`, 14, 40)
     doc.text(`Date : ${today}`, 14, 47)

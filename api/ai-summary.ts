@@ -106,15 +106,80 @@ interface RequestBody {
   ndugumiInscrit: boolean
 }
 
+interface BriefingRequestBody {
+  etablissement: string
+  quartier: string
+  statut: string
+  agent: string
+  notes: { date: string; texte: string; type: string }[]
+}
+
+async function handleBriefing(req: any, res: any) {
+  if (!(await checkRateLimit(req, res, 'ai-summary-briefing'))) return
+
+  const body = req.body as BriefingRequestBody
+  const notesText = (body.notes || [])
+    .slice(0, 10)
+    .map((n) => `- [${n.date.slice(0, 10)}] (${n.type}) ${n.texte}`)
+    .join('\n')
+
+  const userPrompt = `Voici la fiche d'un restaurant que l'équipe commerciale de NDUGUMi s'apprête à visiter
+sur le terrain, à Dakar :
+Établissement : ${body.etablissement}
+Quartier : ${body.quartier}
+Statut commercial : ${body.statut}
+Agent assigné : ${body.agent || 'Non assigné'}
+
+Historique RÉEL des interactions avec ce restaurant (le plus récent en premier) :
+${notesText || "Aucune interaction enregistrée pour l'instant — c'est un premier contact."}
+
+Prépare un briefing flash pour le commercial juste avant d'entrer dans l'établissement. Réponds UNIQUEMENT
+en JSON avec les clés :
+- "profil": une phrase de contexte sur ce restaurant et où en est la relation commerciale (basée sur
+  l'historique ci-dessus, pas une généralité)
+- "objections": tableau de 1 à 3 objections PROBABLES de ce gérant, déduites du contexte réel ci-dessus
+  (si l'historique est vide, base-toi sur le statut commercial et le fait que ce soit un premier contact)
+- "argumentsCles": tableau de 2 à 3 arguments de vente concrets à dérouler, adaptés à ce contexte précis
+- "offreConseillee": une offre ou prochaine étape concrète à proposer
+
+Si l'historique est vide ou très limité, dis-le honnêtement dans "profil" plutôt que d'inventer des détails
+qui ne sont pas dans les données ci-dessus — reste alors sur des conseils génériques mais utiles pour un
+premier contact.`
+
+  const raw = await callDeepSeek(
+    [
+      { role: 'system', content: NDUGUMI_CONTEXT },
+      { role: 'user', content: userPrompt },
+    ],
+    { temperature: 0.5, maxTokens: 500, json: true }
+  )
+
+  let parsed: { profil?: string; objections?: string[]; argumentsCles?: string[]; offreConseillee?: string }
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error('Réponse IA incomplète ou mal formée — réessayez.')
+  }
+
+  res.status(200).json({
+    profil: parsed.profil || '',
+    objections: parsed.objections || [],
+    argumentsCles: parsed.argumentsCles || [],
+    offreConseillee: parsed.offreConseillee || '',
+  })
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Méthode non autorisée' })
     return
   }
 
-  if (!(await checkRateLimit(req, res, 'ai-summary'))) return
-
   try {
+    if (req.query?.action === 'briefing') return await handleBriefing(req, res)
+
+    if (!(await checkRateLimit(req, res, 'ai-summary'))) return
+
     const body = req.body as RequestBody
 
     const notesText = body.notes

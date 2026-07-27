@@ -48,7 +48,7 @@ interface ChatMessage {
   content: string
 }
 
-async function callDeepSeek(messages: ChatMessage[]): Promise<string> {
+async function callDeepSeekOnce(messages: ChatMessage[]): Promise<string> {
   const apiKey = process.env.DEEPSEEK_API_KEY
   if (!apiKey) {
     throw new Error('DEEPSEEK_API_KEY non configurée côté serveur')
@@ -81,6 +81,19 @@ async function callDeepSeek(messages: ChatMessage[]): Promise<string> {
   return content
 }
 
+// Une réponse vide arrive occasionnellement (constaté sur d'autres endpoints IA de ce projet,
+// ~1/3 des appels) sans rapport avec le contenu envoyé — une seconde tentative suffit en pratique.
+async function callDeepSeek(messages: ChatMessage[]): Promise<string> {
+  try {
+    return await callDeepSeekOnce(messages)
+  } catch (e: any) {
+    if (e?.message === 'Réponse DeepSeek vide') {
+      return await callDeepSeekOnce(messages)
+    }
+    throw e
+  }
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Méthode non autorisée' })
@@ -90,14 +103,25 @@ export default async function handler(req: any, res: any) {
   if (!(await checkRateLimit(req, res, 'ai-voice'))) return
 
   try {
-    const { transcriptText, etablissement } = req.body
+    const { transcriptText, etablissement } = req.body as { transcriptText?: string; etablissement?: string }
+    const texte = (transcriptText || '').trim()
+    if (!texte) {
+      res.status(400).json({ error: 'Aucun texte transcrit à analyser.' })
+      return
+    }
 
-    const userPrompt = `Analyse cette transcription vocale de terrain pour le restaurant "${etablissement}" (en Wolof ou Français).
-Transcription : "${transcriptText}"
+    const userPrompt = `Voici la transcription d'une note vocale de terrain pour le restaurant "${etablissement}" à
+Dakar (en Wolof, Français, ou un mélange des deux — la reconnaissance vocale du navigateur ne gère que le
+français, donc du Wolof peut apparaître déformé phonétiquement : fais de ton mieux pour comprendre le sens
+malgré ces déformations, sans inventer de contenu qui n'est pas suggéré par le texte).
+Transcription brute : "${texte}"
 
-Réponds en JSON avec les clés suivantes :
+Réponds UNIQUEMENT en JSON avec les clés suivantes :
 - "langue": langue détectée (ex: "Wolof", "Français", "Wolof / Français mixte")
-- "resumeIA": résumé professionnel et synthétique de la visite (2 phrases max en français)
+- "resumeIA": résumé professionnel et synthétique de la visite (2 phrases max en français), basé
+  uniquement sur ce qui est réellement dit dans la transcription
+- "objections": tableau de 0 à 2 objections ou réserves réellement mentionnées dans la transcription
+  (tableau vide si aucune n'est mentionnée — n'invente rien)
 - "relanceSuggereeDate": date ISO estimée sous forme yyyy-mm-dd si une relance ou livraison est mentionnée (sinon null)`
 
     const raw = await callDeepSeek([

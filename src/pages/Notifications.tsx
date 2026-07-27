@@ -3,7 +3,7 @@ import { useCrmStore } from '../store/useCrmStore'
 import { joinProspects } from '../utils/joined'
 import { waLinkWithText } from '../utils/phone'
 
-import { requestNotificationPermission, sendWebPushNotification } from '../utils/pushNotifications'
+import { requestNotificationPermission, showReminderNotification } from '../utils/notifications'
 
 interface SystemNotification {
   id: string
@@ -100,12 +100,14 @@ export default function Notifications() {
         <button
           className="btn primary"
           onClick={async () => {
-            const granted = await requestNotificationPermission()
-            if (granted) {
-              sendWebPushNotification(
+            const permission = await requestNotificationPermission()
+            if (permission === 'granted') {
+              showReminderNotification(
                 '🔔 Alerte NDUGUMi Restau',
                 'Les notifications push en direct sont désormais activées sur votre appareil !'
               )
+            } else if (permission === 'unsupported') {
+              alert("Votre navigateur ne supporte pas les notifications.")
             }
           }}
         >

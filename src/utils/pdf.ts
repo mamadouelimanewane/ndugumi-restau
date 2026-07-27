@@ -44,6 +44,32 @@ function download(doc: jsPDF, filename: string) {
   doc.save(filename)
 }
 
+// Bandeau d'en-tête de marque pour les PDF en orientation portrait / unité mm (jsPDF par défaut,
+// contrairement à newDoc() ci-dessus qui est en pt/landscape pour les tableaux d'export) —
+// factorisé ici pour éviter de dupliquer ce bloc dans chaque page qui génère un PDF ponctuel
+// (devis, facture, planning...). Remet le texte en gris foncé (40,40,40) juste après, prêt pour
+// le contenu du document.
+export function brandedHeaderMm(doc: jsPDF, title: string, opts: { height?: number; brandLine?: string } = {}) {
+  const height = opts.height ?? 24
+  const pageWidth = doc.internal.pageSize.getWidth()
+  doc.setFillColor(...PRIMARY)
+  doc.rect(0, 0, pageWidth, height, 'F')
+  doc.setTextColor(255, 255, 255)
+  if (opts.brandLine) {
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text(opts.brandLine, 14, 10)
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.text(title, 14, 17)
+  } else {
+    doc.setFontSize(16)
+    doc.setFont('helvetica', 'bold')
+    doc.text(title, 14, height >= 28 ? 20 : 15)
+  }
+  doc.setTextColor(40, 40, 40)
+}
+
 export function exportProspectsPdf(joined: JoinedProspect[], title = 'Répertoire des prospects') {
   const doc = newDoc(title, `${joined.length} restaurants`)
 
