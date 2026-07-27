@@ -297,12 +297,57 @@ async function handleWebWatch(req: any, res: any) {
 
 const MAX_COMPARE_PRODUCTS = 5
 
+const COMBINING_MARKS_MP = /[̀-ͯ]/g
+function normalizeText(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(COMBINING_MARKS_MP, '').trim()
+}
+
+// Un mot de catégorie large ("fruits", "légumes"...) n'est pas UN produit — chercher "le prix des
+// fruits" ne donne quasi rien de bon (2-3 résultats épars) car Perplexity/DeepSeek traitent le mot
+// comme un unique produit générique. On détecte ce cas pour reformuler la recherche en énumération
+// de plusieurs produits distincts de cette catégorie, avec un prix chacun.
+const BROAD_CATEGORIES = new Set([
+  'fruits', 'legumes', 'viandes', 'poissons', 'fruits de mer', 'cereales', 'huiles',
+  'epicerie', 'boissons', 'fromagerie', 'produits locaux', 'combustible', 'viandes et volailles',
+])
+
+function isBroadCategory(produit: string): boolean {
+  return BROAD_CATEGORIES.has(normalizeText(produit))
+}
+
 async function compareOneProduct(supabase: ReturnType<typeof getAdminClient>, produit: string) {
   try {
-    const question = `Je cherche à comparer le prix et la disponibilité du produit "${produit}" à Dakar, Sénégal, sur PLUSIEURS sources différentes (pas une seule). Cherche en respectant CET ORDRE DE PRIORITÉ : (1) D'ABORD des sources LOCALES sénégalaises (Auchan.sn, autres supermarchés/boutiques en ligne sénégalais, marchés locaux de Dakar comme Tilène/Castors/Sandaga) — rassemble-en plusieurs si possible ; (2) seulement si trop peu de sources locales existent, complète avec des sources de la SOUS-RÉGION ouest-africaine (Côte d'Ivoire, Mali, autres pays CEDEAO) ; (3) des sources étrangères hors sous-région en tout dernier recours seulement. À chaque niveau, privilégie les sites web avec une vraie fiche produit/prix ; les pages Facebook (boutiques, Facebook Marketplace) ne sont à inclure qu'en complément des sites web, ou si aucun site web n'a l'information pour ce niveau. Pour chaque source où tu trouves une information, donne le LIBELLÉ EXACT/COMPLET du produit tel qu'il est vendu par cette enseigne (nom de marque, format, variante précise — pas juste "${produit}" générique), le prix en FCFA, l'unité/format vendu, et si le produit semble disponible ou en rupture. Si tu ne trouves qu'une seule source fiable, donne-la quand même. Ne donne que des informations réellement trouvées, n'invente aucun prix ni aucun libellé.`
+    const categoryMode = isBroadCategory(produit)
+
+    const question = categoryMode
+      ? `"${produit}" est une CATÉGORIE de produits alimentaires, pas un produit unique. Liste ENTRE 8 ET 15
+produits DIFFÉRENTS et courants de cette catégorie vendus à Dakar, Sénégal (par exemple pour "Fruits" :
+mangue, banane, orange, ananas, pastèque, papaye, citron, pomme, raisin, goyave... — des produits VRAIMENT
+distincts, pas des variantes du même produit). Pour CHAQUE produit de la liste, trouve son prix actuel en
+FCFA sur au moins une source fiable, en respectant CET ORDRE DE PRIORITÉ : (1) sources LOCALES sénégalaises
+(Auchan.sn en priorité, autres supermarchés/boutiques sénégalais, marchés locaux de Dakar comme
+Tilène/Castors/Sandaga) ; (2) sources de la sous-région ouest-africaine (CEDEAO) seulement si rien de local ;
+(3) sources étrangères en tout dernier recours. Privilégie les sites web à Facebook. Pour chaque produit,
+donne son nom précis, le prix en FCFA, l'unité/format vendu, la source, et si disponible/en rupture. Ne
+donne que des informations réellement trouvées, n'invente aucun prix.`
+      : `Je cherche à comparer le prix et la disponibilité du produit "${produit}" à Dakar, Sénégal, sur PLUSIEURS sources différentes (pas une seule). Cherche en respectant CET ORDRE DE PRIORITÉ : (1) D'ABORD des sources LOCALES sénégalaises (Auchan.sn, autres supermarchés/boutiques en ligne sénégalais, marchés locaux de Dakar comme Tilène/Castors/Sandaga) — rassemble-en plusieurs si possible ; (2) seulement si trop peu de sources locales existent, complète avec des sources de la SOUS-RÉGION ouest-africaine (Côte d'Ivoire, Mali, autres pays CEDEAO) ; (3) des sources étrangères hors sous-région en tout dernier recours seulement. À chaque niveau, privilégie les sites web avec une vraie fiche produit/prix ; les pages Facebook (boutiques, Facebook Marketplace) ne sont à inclure qu'en complément des sites web, ou si aucun site web n'a l'information pour ce niveau. Pour chaque source où tu trouves une information, donne le LIBELLÉ EXACT/COMPLET du produit tel qu'il est vendu par cette enseigne (nom de marque, format, variante précise — pas juste "${produit}" générique), le prix en FCFA, l'unité/format vendu, et si le produit semble disponible ou en rupture. Si tu ne trouves qu'une seule source fiable, donne-la quand même. Ne donne que des informations réellement trouvées, n'invente aucun prix ni aucun libellé.`
     const { content, citations } = await callPerplexity(question)
 
-    const extractPrompt = `Voici le résultat d'une recherche web comparant les prix du produit "${produit}" à Dakar :
+    const extractPrompt = categoryMode
+      ? `Voici le résultat d'une recherche web listant plusieurs produits de la catégorie "${produit}" à Dakar
+avec leur prix :
+"""
+${content.slice(0, 3200)}
+"""
+Réponds UNIQUEMENT en JSON avec la clé "lignes", un tableau d'objets — UNE ligne par produit DISTINCT trouvé
+(pas par source — si le même produit a plusieurs prix/sources, fais une ligne par source) :
+{"source": string (nom du site/enseigne/marché mentionné), "libelle": string (nom précis du produit trouvé,
+ex: "Mangue", "Orange locale" — JAMAIS "${produit}" tel quel), "prix": number entier ou null (le FCFA n'a PAS
+de décimale : un prix est TOUJOURS un nombre entier — un point dans "3.500 FCFA" signifie 3500, séparateur de
+milliers, jamais une décimale), "unite": string (ex: "kg", "unité"), "disponibilite":
+"disponible"|"rupture"|"non précisé"}
+N'invente aucune ligne, aucun prix ni aucun libellé qui ne soit pas explicitement mentionné dans le texte ci-dessus.`
+      : `Voici le résultat d'une recherche web comparant les prix du produit "${produit}" à Dakar :
 """
 ${content.slice(0, 2200)}
 """
@@ -316,7 +361,7 @@ un point comme séparateur de milliers, ex: "3.500 FCFA", cela signifie 3500, PA
 point avec une virgule décimale), "unite": string (ex: "kg", "sac 25kg", "unité"), "disponibilite":
 "disponible"|"rupture"|"non précisé"}
 N'invente aucune ligne, aucun prix ni aucun libellé qui ne soit pas explicitement mentionné dans le texte ci-dessus.`
-    const raw = await callDeepSeek([{ role: 'user', content: extractPrompt }], 900)
+    const raw = await callDeepSeek([{ role: 'user', content: extractPrompt }], categoryMode ? 1800 : 900)
     const parsed = safeJsonParse(raw) as {
       lignes?: { source?: string; libelle?: string; prix?: number | null; unite?: string; disponibilite?: string }[]
     }
