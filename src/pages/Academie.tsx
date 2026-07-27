@@ -1,4 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
+import { useCrmStore } from '../store/useCrmStore'
+import { joinProspects } from '../utils/joined'
+import { CLIENT_STATUTS } from '../types'
 
 interface QuizQuestion {
   question: string
@@ -48,10 +51,91 @@ interface ChatEntry {
   reponse: string
 }
 
+interface SalesInsight {
+  titre: string
+  observation: string
+  conseil: string
+}
+
+const STATUTS_PERDUS: string[] = ['refuse', 'injoignable']
+const MIN_ECHANTILLON = 3 // en dessous, un taux de conversion n'est pas fiable (trop peu de cas)
+
 export default function Academie() {
-  const [activeTab, setActiveTab] = useState<'arguments' | 'wolof' | 'quiz' | 'assistant'>('arguments')
+  const [activeTab, setActiveTab] = useState<'arguments' | 'wolof' | 'quiz' | 'assistant' | 'enseignements'>('arguments')
   const [quizScores, setQuizScores] = useState<Record<number, number>>({})
   const [showResults, setShowResults] = useState(false)
+
+  const restaurants = useCrmStore((s) => s.restaurants)
+  const prospects = useCrmStore((s) => s.prospects)
+  const joined = useMemo(() => joinProspects(restaurants, prospects), [restaurants, prospects])
+
+  const gagnes = useMemo(() => joined.filter((j) => CLIENT_STATUTS.includes(j.crm.statut)), [joined])
+  const perdus = useMemo(() => joined.filter((j) => STATUTS_PERDUS.includes(j.crm.statut)), [joined])
+
+  // Taux de conversion = gagnés / (gagnés + perdus) sur un groupe donné — les prospects encore
+  // "en cours" (nouveau/contacté/intéressé/rdv/négociation) sont exclus, leur issue n'étant pas
+  // encore connue. Ne montre que les groupes avec au moins MIN_ECHANTILLON cas au total.
+  function conversionStats(keyFn: (j: (typeof joined)[number]) => string[]): { cle: string; taux: number; total: number }[] {
+    const counts = new Map<string, { gagnes: number; total: number }>()
+    for (const j of joined) {
+      const isGagne = CLIENT_STATUTS.includes(j.crm.statut)
+      const isPerdu = STATUTS_PERDUS.includes(j.crm.statut)
+      if (!isGagne && !isPerdu) continue
+      for (const cle of keyFn(j)) {
+        const entry = counts.get(cle) ?? { gagnes: 0, total: 0 }
+        entry.total += 1
+        if (isGagne) entry.gagnes += 1
+        counts.set(cle, entry)
+      }
+    }
+    return Array.from(counts.entries())
+      .map(([cle, { gagnes: g, total }]) => ({ cle, taux: g / total, total }))
+      .filter((s) => s.total >= MIN_ECHANTILLON)
+      .sort((a, b) => b.taux - a.taux)
+  }
+
+  const statsParQuartier = useMemo(() => conversionStats((j) => [j.quartier]), [joined])
+  const statsParTag = useMemo(() => conversionStats((j) => j.crm.tags), [joined])
+
+  const moyenneInteractions = useMemo(() => {
+    const avg = (list: typeof gagnes) =>
+      list.length > 0 ? list.reduce((sum, j) => sum + j.crm.notes.length, 0) / list.length : 0
+    return { gagnes: avg(gagnes), perdus: avg(perdus) }
+  }, [gagnes, perdus])
+
+  const [insightsLoading, setInsightsLoading] = useState(false)
+  const [insightsError, setInsightsError] = useState<string | null>(null)
+  const [insights, setInsights] = useState<SalesInsight[] | null>(null)
+  const [insightsEchantillon, setInsightsEchantillon] = useState<{ convertis: number; perdus: number } | null>(null)
+
+  async function handleGenerateInsights() {
+    setInsightsLoading(true)
+    setInsightsError(null)
+    try {
+      const convertisTexte = gagnes.flatMap((j) => j.crm.notes.map((n) => n.texte)).filter(Boolean).slice(-40)
+      const perdusTexte = perdus.flatMap((j) => j.crm.notes.map((n) => n.texte)).filter(Boolean).slice(-40)
+      if (convertisTexte.length + perdusTexte.length === 0) {
+        setInsightsError("Pas encore assez de notes enregistrées sur des prospects gagnés/perdus pour analyser quoi que ce soit.")
+        return
+      }
+      const res = await fetch('/api/ai-academie?action=insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ convertis: convertisTexte, perdus: perdusTexte }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setInsightsError(data.error || "Erreur lors de l'analyse.")
+        return
+      }
+      setInsights(data.enseignements ?? [])
+      setInsightsEchantillon(data.echantillon ?? null)
+    } catch (e: any) {
+      setInsightsError(e?.message || 'Impossible de contacter le serveur.')
+    } finally {
+      setInsightsLoading(false)
+    }
+  }
 
   const [chatQuestion, setChatQuestion] = useState('')
   const [chatHistory, setChatHistory] = useState<ChatEntry[]>([])
@@ -116,6 +200,9 @@ export default function Academie() {
         </button>
         <button className={activeTab === 'assistant' ? 'btn' : 'btn secondary'} onClick={() => setActiveTab('assistant')}>
           🤖 Assistant IA
+        </button>
+        <button className={activeTab === 'enseignements' ? 'btn' : 'btn secondary'} onClick={() => setActiveTab('enseignements')}>
+          📊 Enseignements du terrain
         </button>
       </div>
 
@@ -270,6 +357,119 @@ export default function Academie() {
               {chatLoading ? 'Réflexion…' : 'Demander'}
             </button>
           </div>
+        </div>
+      )}
+
+      {/* TAB 5 : ENSEIGNEMENTS DU TERRAIN (apprentissage à partir des vraies données) */}
+      {activeTab === 'enseignements' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div className="panel">
+            <h3 style={{ margin: '0 0 4px' }}>📊 Ce qui marche vraiment — basé sur vos prospects réels</h3>
+            <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0 }}>
+              Calculé à partir de {gagnes.length} prospect(s) gagné(s) (signé/client) et {perdus.length} prospect(s)
+              perdu(s) (refusé/injoignable). Les groupes avec moins de {MIN_ECHANTILLON} cas ne sont pas affichés
+              (échantillon trop faible pour être fiable).
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 16 }}>
+            <div className="panel">
+              <h4 style={{ margin: '0 0 10px', fontSize: 13.5 }}>📍 Taux de conversion par quartier</h4>
+              {statsParQuartier.length === 0 ? (
+                <p style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Pas assez de données par quartier pour l'instant.</p>
+              ) : (
+                <table className="data-table" style={{ fontSize: 12 }}>
+                  <thead><tr><th>Quartier</th><th>Taux</th><th>Cas</th></tr></thead>
+                  <tbody>
+                    {statsParQuartier.slice(0, 8).map((s) => (
+                      <tr key={s.cle}>
+                        <td>{s.cle}</td>
+                        <td style={{ fontWeight: 700, color: s.taux >= 0.5 ? '#16a34a' : '#dc2626' }}>{Math.round(s.taux * 100)}%</td>
+                        <td style={{ color: 'var(--text-dim)' }}>{s.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="panel">
+              <h4 style={{ margin: '0 0 10px', fontSize: 13.5 }}>🏷️ Taux de conversion par tag</h4>
+              {statsParTag.length === 0 ? (
+                <p style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>Pas assez de données par tag pour l'instant.</p>
+              ) : (
+                <table className="data-table" style={{ fontSize: 12 }}>
+                  <thead><tr><th>Tag</th><th>Taux</th><th>Cas</th></tr></thead>
+                  <tbody>
+                    {statsParTag.slice(0, 8).map((s) => (
+                      <tr key={s.cle}>
+                        <td>{s.cle}</td>
+                        <td style={{ fontWeight: 700, color: s.taux >= 0.5 ? '#16a34a' : '#dc2626' }}>{Math.round(s.taux * 100)}%</td>
+                        <td style={{ color: 'var(--text-dim)' }}>{s.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="panel">
+              <h4 style={{ margin: '0 0 10px', fontSize: 13.5 }}>💬 Nombre moyen d'échanges avant l'issue</h4>
+              <div style={{ fontSize: 13, marginBottom: 6 }}>
+                ✅ Prospects gagnés : <strong>{moyenneInteractions.gagnes.toFixed(1)}</strong> note(s) en moyenne
+              </div>
+              <div style={{ fontSize: 13 }}>
+                ❌ Prospects perdus : <strong>{moyenneInteractions.perdus.toFixed(1)}</strong> note(s) en moyenne
+              </div>
+              <p style={{ fontSize: 11.5, color: 'var(--text-dim)', marginTop: 8 }}>
+                Indicatif seulement — ne prouve pas qu'insister plus fait gagner, juste ce qui a été observé.
+              </p>
+            </div>
+          </div>
+
+          <div className="panel" style={{ background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', color: '#fff' }}>
+            <div style={{ display: 'flex', gap: 14, alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                <span style={{ fontSize: 28 }}>🤖</span>
+                <div>
+                  <h4 style={{ color: '#fff', margin: 0, fontSize: 14 }}>Synthèse IA des notes terrain</h4>
+                  <p style={{ fontSize: 12, color: '#94a3b8', margin: '4px 0 0' }}>
+                    Analyse le contenu réel des notes des prospects gagnés vs perdus pour repérer des patterns.
+                  </p>
+                </div>
+              </div>
+              <button className="btn primary" onClick={handleGenerateInsights} disabled={insightsLoading}>
+                {insightsLoading ? 'Analyse en cours…' : '✨ Générer une synthèse IA'}
+              </button>
+            </div>
+          </div>
+
+          {insightsError && (
+            <div className="panel" style={{ borderLeft: '4px solid var(--danger, #c0392b)' }}>{insightsError}</div>
+          )}
+
+          {insights && insights.length > 0 && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              {insightsEchantillon && (
+                <p style={{ fontSize: 11.5, color: 'var(--text-dim)', margin: 0 }}>
+                  Basé sur {insightsEchantillon.convertis} note(s) côté gagnés et {insightsEchantillon.perdus} note(s) côté perdus.
+                </p>
+              )}
+              {insights.map((ins, i) => (
+                <div key={i} className="panel" style={{ borderLeft: '4px solid var(--accent, #c0793a)' }}>
+                  <strong style={{ color: '#7a1f1f' }}>{ins.titre}</strong>
+                  <p style={{ fontSize: 13, margin: '6px 0' }}>{ins.observation}</p>
+                  {ins.conseil && <p style={{ fontSize: 12.5, color: 'var(--text-dim)', margin: 0 }}>💡 {ins.conseil}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {insights && insights.length === 0 && !insightsError && (
+            <p style={{ fontSize: 12.5, color: 'var(--text-dim)' }}>
+              Aucun pattern clair n'a pu être dégagé des notes disponibles pour l'instant.
+            </p>
+          )}
         </div>
       )}
     </div>

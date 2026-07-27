@@ -41,7 +41,7 @@ async function checkRateLimit(req: any, res: any, endpoint: string): Promise<boo
   return true
 }
 
-async function callDeepSeekOnce(messages: { role: 'system' | 'user'; content: string }[]): Promise<string> {
+async function callDeepSeekOnce(messages: { role: 'system' | 'user'; content: string }[], opts: { json?: boolean; maxTokens?: number } = {}): Promise<string> {
   const apiKey = process.env.DEEPSEEK_API_KEY
   if (!apiKey) {
     throw new Error('DEEPSEEK_API_KEY non configurée côté serveur')
@@ -58,7 +58,8 @@ async function callDeepSeekOnce(messages: { role: 'system' | 'user'; content: st
       thinking: { type: 'disabled' },
       messages,
       temperature: 0.4,
-      max_tokens: 500,
+      max_tokens: opts.maxTokens ?? 500,
+      ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
     }),
   })
 
@@ -75,12 +76,12 @@ async function callDeepSeekOnce(messages: { role: 'system' | 'user'; content: st
 
 // Une réponse vide arrive occasionnellement (constaté sur d'autres endpoints IA de ce projet,
 // ~1/3 des appels) sans rapport avec le contenu envoyé — une seconde tentative suffit en pratique.
-async function callDeepSeek(messages: { role: 'system' | 'user'; content: string }[]): Promise<string> {
+async function callDeepSeek(messages: { role: 'system' | 'user'; content: string }[], opts: { json?: boolean; maxTokens?: number } = {}): Promise<string> {
   try {
-    return await callDeepSeekOnce(messages)
+    return await callDeepSeekOnce(messages, opts)
   } catch (e: any) {
     if (e?.message === 'Réponse DeepSeek vide') {
-      return await callDeepSeekOnce(messages)
+      return await callDeepSeekOnce(messages, opts)
     }
     throw e
   }
@@ -124,15 +125,66 @@ interface RequestBody {
   question: string
 }
 
+interface InsightsRequestBody {
+  convertis: string[] // extraits de notes réelles de prospects finalement signés/clients
+  perdus: string[] // extraits de notes réelles de prospects refusés/injoignables
+}
+
+async function handleInsights(req: any, res: any) {
+  if (!(await checkRateLimit(req, res, 'ai-academie-insights'))) return
+
+  const body = req.body as InsightsRequestBody
+  const convertis = (body.convertis || []).slice(0, 40)
+  const perdus = (body.perdus || []).slice(0, 40)
+
+  if (convertis.length + perdus.length === 0) {
+    res.status(400).json({ error: 'Aucune note disponible pour analyser (il faut au moins quelques prospects avec des notes, gagnés ou perdus).' })
+    return
+  }
+
+  const prompt = `Voici des extraits RÉELS de notes commerciales prises par une équipe terrain à Dakar (NDUGUMi,
+livraison de marché pour restaurants), issues de deux groupes de prospects réels :
+
+GROUPE "CONVERTIS" (restaurants finalement signés ou devenus clients) :
+${convertis.length > 0 ? convertis.map((t, i) => `${i + 1}. ${t}`).join('\n') : '(aucune note dans ce groupe)'}
+
+GROUPE "PERDUS" (restaurants refusés ou devenus injoignables) :
+${perdus.length > 0 ? perdus.map((t, i) => `${i + 1}. ${t}`).join('\n') : '(aucune note dans ce groupe)'}
+
+Analyse ces textes RÉELS et identifie des patterns récurrents concrets : quels arguments, mots ou approches
+reviennent le plus souvent dans le groupe "convertis" (à répéter), et quelles objections ou situations
+reviennent dans le groupe "perdus" (à anticiper). Réponds UNIQUEMENT en JSON avec la clé "enseignements", un
+tableau d'objets courts (4 max) : {"titre": string (court), "observation": string (une phrase, ancrée sur ce
+qui apparaît réellement dans les notes ci-dessus, pas une généralité), "conseil": string (une action concrète
+pour un commercial terrain)}. Si les données sont trop limitées pour dégager un vrai pattern, dis-le clairement
+dans "observation" plutôt que d'inventer une tendance qui ne ressort pas clairement du texte.`
+
+  const raw = await callDeepSeek([{ role: 'user', content: prompt }], { json: true, maxTokens: 1200 })
+  let parsed: { enseignements?: { titre?: string; observation?: string; conseil?: string }[] }
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error('Réponse IA incomplète ou mal formée — réessayez.')
+  }
+
+  const enseignements = (parsed.enseignements ?? [])
+    .filter((e) => e.observation)
+    .map((e) => ({ titre: e.titre || 'Observation', observation: e.observation!, conseil: e.conseil || '' }))
+
+  res.status(200).json({ enseignements, echantillon: { convertis: convertis.length, perdus: perdus.length } })
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Méthode non autorisée' })
     return
   }
 
-  if (!(await checkRateLimit(req, res, 'ai-academie'))) return
-
   try {
+    if (req.query?.action === 'insights') return await handleInsights(req, res)
+
+    if (!(await checkRateLimit(req, res, 'ai-academie'))) return
+
     const body = req.body as RequestBody
     const question = (body.question || '').trim()
     if (!question) {
