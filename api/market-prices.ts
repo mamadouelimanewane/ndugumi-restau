@@ -218,7 +218,7 @@ async function processOneWebWatchProduct(
   categorie: string
 ) {
   try {
-    const question = `Quel est le prix actuel (le plus récent possible) du produit "${produit}" (${unite}) à Dakar, Sénégal ? Cherche sur Auchan.sn en priorité, et sur d'autres sources web fiables sur les prix des marchés de Dakar (Tilène, Castors, Sandaga) si disponible. Réponds avec le prix en FCFA le plus précis trouvé et le nom du site/source où tu l'as trouvé. Si aucun prix fiable n'est trouvé, dis-le clairement.`
+    const question = `Quel est le prix actuel (le plus récent possible) du produit "${produit}" (${unite}) à Dakar, Sénégal ? Cherche sur Auchan.sn en priorité, sur d'autres sources web fiables sur les prix des marchés de Dakar (Tilène, Castors, Sandaga), et aussi sur Facebook (pages Facebook de boutiques/marchands sénégalais, Facebook Marketplace) où de nombreux vendeurs locaux publient leurs prix. Réponds avec le prix en FCFA le plus précis trouvé et le nom du site/source où tu l'as trouvé. Si aucun prix fiable n'est trouvé, dis-le clairement.`
     const { content, citations } = await callPerplexity(question)
 
     const extractPrompt = `Voici la réponse d'une recherche web sur le prix de "${produit}" à Dakar :
@@ -299,7 +299,7 @@ const MAX_COMPARE_PRODUCTS = 5
 
 async function compareOneProduct(supabase: ReturnType<typeof getAdminClient>, produit: string) {
   try {
-    const question = `Je cherche à comparer le prix et la disponibilité du produit "${produit}" à Dakar, Sénégal, sur PLUSIEURS sources différentes (pas une seule) : Auchan.sn, d'autres supermarchés en ligne sénégalais, et si possible une indication sur les marchés locaux de Dakar (Tilène, Castors, Sandaga). Pour chaque source où tu trouves une information, donne le LIBELLÉ EXACT/COMPLET du produit tel qu'il est vendu par cette enseigne (nom de marque, format, variante précise — pas juste "${produit}" générique), le prix en FCFA, l'unité/format vendu, et si le produit semble disponible ou en rupture. Si tu ne trouves qu'une seule source fiable, donne-la quand même. Ne donne que des informations réellement trouvées, n'invente aucun prix ni aucun libellé.`
+    const question = `Je cherche à comparer le prix et la disponibilité du produit "${produit}" à Dakar, Sénégal, sur PLUSIEURS sources différentes (pas une seule) : Auchan.sn, d'autres supermarchés en ligne sénégalais, Facebook (pages Facebook de boutiques/marchands sénégalais, Facebook Marketplace — beaucoup de vendeurs locaux y publient leurs prix), et si possible une indication sur les marchés locaux de Dakar (Tilène, Castors, Sandaga). Pour chaque source où tu trouves une information, donne le LIBELLÉ EXACT/COMPLET du produit tel qu'il est vendu par cette enseigne (nom de marque, format, variante précise — pas juste "${produit}" générique), le prix en FCFA, l'unité/format vendu, et si le produit semble disponible ou en rupture. Si tu ne trouves qu'une seule source fiable, donne-la quand même. Ne donne que des informations réellement trouvées, n'invente aucun prix ni aucun libellé.`
     const { content, citations } = await callPerplexity(question)
 
     const extractPrompt = `Voici le résultat d'une recherche web comparant les prix du produit "${produit}" à Dakar :
@@ -310,20 +310,28 @@ Réponds UNIQUEMENT en JSON avec la clé "lignes", un tableau d'objets — UNE l
 mentionné dans le texte ci-dessus (peut être 1 seule ligne si une seule source est trouvée, ou plusieurs) :
 {"source": string (nom du site/enseigne/marché mentionné), "libelle": string (nom exact/complet du produit
 tel que vendu par cette source — marque, format, variante — si mentionné dans le texte, sinon chaîne vide,
-NE PAS recopier juste "${produit}"), "prix": number ou null si aucun prix chiffré pour cette source, "unite":
-string (ex: "kg", "sac 25kg", "unité"), "disponibilite": "disponible"|"rupture"|"non précisé"}
+NE PAS recopier juste "${produit}"), "prix": number entier ou null si aucun prix chiffré pour cette source
+(le FCFA n'a PAS de sous-unité décimale : un prix est TOUJOURS un nombre entier — si le texte source utilise
+un point comme séparateur de milliers, ex: "3.500 FCFA", cela signifie 3500, PAS 3.5 — ne confonds jamais ce
+point avec une virgule décimale), "unite": string (ex: "kg", "sac 25kg", "unité"), "disponibilite":
+"disponible"|"rupture"|"non précisé"}
 N'invente aucune ligne, aucun prix ni aucun libellé qui ne soit pas explicitement mentionné dans le texte ci-dessus.`
     const raw = await callDeepSeek([{ role: 'user', content: extractPrompt }], 900)
     const parsed = safeJsonParse(raw) as {
       lignes?: { source?: string; libelle?: string; prix?: number | null; unite?: string; disponibilite?: string }[]
     }
 
+    // Filet de sécurité au-delà du prompt : aucun produit alimentaire réel ne coûte < 20 FCFA au
+    // Sénégal — un prix sous ce seuil trahit presque toujours une confusion point-décimal/point-
+    // milliers côté IA (constaté : "3.500 FCFA" source lu comme 3.5). Mieux vaut l'écarter que
+    // l'afficher/l'enregistrer comme une donnée réelle trompeuse.
+    const MIN_PLAUSIBLE_PRICE = 20
     const lignes = (parsed.lignes ?? [])
       .filter((l) => l.source)
       .map((l) => ({
         source: l.source!,
         libelle: l.libelle || '',
-        prix: typeof l.prix === 'number' && l.prix > 0 ? l.prix : null,
+        prix: typeof l.prix === 'number' && l.prix >= MIN_PLAUSIBLE_PRICE ? l.prix : null,
         unite: l.unite || '',
         disponibilite: (['disponible', 'rupture'].includes(l.disponibilite || '') ? l.disponibilite : 'non précisé') as 'disponible' | 'rupture' | 'non précisé',
       }))
