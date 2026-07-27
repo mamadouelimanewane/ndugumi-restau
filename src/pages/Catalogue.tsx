@@ -13,6 +13,7 @@ interface DuplicateGroup {
 
 interface WebSearchLine {
   source: string
+  libelle: string
   prix: number | null
   unite: string
   disponibilite: 'disponible' | 'rupture' | 'non précisé'
@@ -232,15 +233,16 @@ export default function Catalogue() {
 
   function handleAddFromWebResult(produit: string, l: WebSearchLine) {
     if (l.prix === null) return
+    const nom = l.libelle.trim() || produit
     addProduct({
-      nom: produit,
+      nom,
       categorie: '',
       prixUnitaire: l.prix,
       unite: l.unite || 'unité',
       description: '',
       fournisseur: l.source,
     })
-    alert(`« ${produit} » ajouté au catalogue (${l.prix.toLocaleString('fr-FR')} FCFA / ${l.unite || 'unité'}, source : ${l.source}). Complétez la catégorie si besoin.`)
+    alert(`« ${nom} » ajouté au catalogue (${l.prix.toLocaleString('fr-FR')} FCFA / ${l.unite || 'unité'}, source : ${l.source}). Complétez la catégorie si besoin.`)
   }
 
   // Reload forcé de la page pour purger le cache PWA si l'utilisateur ne voyait pas les changements
@@ -323,6 +325,7 @@ export default function Catalogue() {
                       <thead>
                         <tr>
                           <th>Source</th>
+                          <th>Libellé produit</th>
                           <th>Prix</th>
                           <th>Disponibilité</th>
                           <th></th>
@@ -332,6 +335,9 @@ export default function Catalogue() {
                         {r.lignes.map((l, i) => (
                           <tr key={i}>
                             <td>{l.source}</td>
+                            <td style={{ fontSize: 12.5, color: l.libelle ? 'var(--text)' : 'var(--text-dim)' }}>
+                              {l.libelle || '— Non précisé'}
+                            </td>
                             <td style={{ fontWeight: 700 }}>
                               {l.prix !== null ? `${l.prix.toLocaleString('fr-FR')} FCFA${l.unite ? ` / ${l.unite}` : ''}` : '—'}
                             </td>
